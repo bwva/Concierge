@@ -1,3 +1,66 @@
+Concierge.pm
+============
+# Installation of a Standard Concierge with Persistence:
+	my $storage_dir			= 'path/to/storage_dir';			# For both Sessions and Users
+	my $auth_file			= 'path/to/passwordfile';			# Put in $storage_dir if only filename
+	my $app_fields			= [];
+	my $user_session_fields	= [];	# For use with session_data method built on set_data() & get_data()
+
+	my $installation_result = Concierge->build_desk( $storage_dir, $auth_file, $app_fields, $user_session_fields );
+
+    sub build_desk ($storage_dir, $auth_file, $app_fields=[], $user_session_fields)=[] (
+        sessions => { 
+        	storage_dir 		=> $storage_dir,				# required
+        	backend 			=> '', 							# use default ('SQLite')
+        	session_timeout		=> '',							# use default (3600)
+        },
+        
+        user_session_fields		=> $user_session_fields,		# optional, specified by app
+
+        auth => { 
+        	auth_file 			=> $auth_file		 			# required
+        },
+
+        users => { 
+        	storage_dir 		=> $storage_dir,				# required
+        	backend 			=> '',							# use default ('database')
+        	include_standard_fields => 'all', 					# use standard
+        	field_overrides 	=> [],							# use standard
+        	app_fields 			=> $app_fields,					# optional, specified by app
+        },
+    );
+
+# Result from Installation with Concierge->build_desk():
+	# $installation_result = { success => 1|0, message => "...", desk => 'path/to/storage_dir' }
+	# Dies on fail
+	# If success:
+	# Stored Concierge session with config for instantiating $concierge:
+		# sessions: session_storage_dir, backend 	# no change after installation
+		# auth: password file path					# no change after installation
+		# users: config file path					# no change after installation
+		# user_key: user_id <=> session_id lookups	# updated when sessions added/deleted 
+		# user_session_fields: 						# used with session_data method
+
+# Operations with Installed Concierge
+	my $desk_location	= $storage_dir;	# desk saved by app from its config or $installation_result		
+	sub open_desk ($desk_location) {
+		# instantiate from config stored in Concierge's session data
+		my $session_manager		= Concierge::Sessions->new( storage_dir => $desk_location );
+		my $concierge_session	= $session_manager->get_session('__concierge__');
+		my $concierge_config	= $concierge_session->get_data()->{concierge_config};
+		# Instantiate from $concierge_config
+		# ...
+		return { success => 1|0, message => '...', concierge => $instantiated_consierge };
+	}
+	my $desk_is_open	= Concierge->open_desk( $desk_location ); 
+	my $concierge		= $desk_is_open->{concierge} if $desk_is_open->{success};
+	# Instantiated Concierge object $concierge
+		# Has own session
+		# Has Sessions Manager
+		# Has User Data Interface
+		# Has User Authenticator
+
+
 Users.pm
 ========
 * setup API
