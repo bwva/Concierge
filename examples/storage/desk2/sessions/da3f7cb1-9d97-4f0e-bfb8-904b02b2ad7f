@@ -1,0 +1,21 @@
+{
+   "last_updated" : 1769062145,
+   "created_at" : 1769062145,
+   "user_id" : "carol",
+   "expires_at" : 1769065745,
+   "session_id" : "da3f7cb1-9d97-4f0e-bfb8-904b02b2ad7f",
+   "data" : {
+      "preferences" : {
+         "theme" : "light",
+         "lang" : "en"
+      },
+      "username" : "carol",
+      "login_time" : 1769062145
+   },
+   "session_timeout" : "3600",
+   "status" : {
+      "state" : "active",
+      "dirty" : 0
+   }
+}
+

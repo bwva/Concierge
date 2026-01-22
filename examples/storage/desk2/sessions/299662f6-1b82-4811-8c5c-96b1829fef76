@@ -1,0 +1,21 @@
+{
+   "last_updated" : 1769062145,
+   "user_id" : "bob",
+   "created_at" : 1769062145,
+   "expires_at" : 1769065745,
+   "data" : {
+      "username" : "bob",
+      "preferences" : {
+         "lang" : "en",
+         "theme" : "light"
+      },
+      "login_time" : 1769062145
+   },
+   "session_id" : "299662f6-1b82-4811-8c5c-96b1829fef76",
+   "session_timeout" : "3600",
+   "status" : {
+      "state" : "active",
+      "dirty" : 0
+   }
+}
+

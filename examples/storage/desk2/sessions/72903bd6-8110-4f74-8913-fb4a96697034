@@ -1,0 +1,21 @@
+{
+   "session_id" : "72903bd6-8110-4f74-8913-fb4a96697034",
+   "data" : {
+      "preferences" : {
+         "lang" : "en",
+         "theme" : "light"
+      },
+      "username" : "dave",
+      "login_time" : 1769062145
+   },
+   "status" : {
+      "dirty" : 0,
+      "state" : "active"
+   },
+   "session_timeout" : "3600",
+   "user_id" : "dave",
+   "created_at" : 1769062145,
+   "last_updated" : 1769062145,
+   "expires_at" : 1769065745
+}
+

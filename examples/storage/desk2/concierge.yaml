@@ -1,0 +1,21 @@
+---
+auth:
+  auth_file: ./storage/desk2/auth.pwd
+components_configured:
+  - auth
+  - sessions
+  - users
+concierge:
+  backend: File
+  concierge_session_id: b2ea43c3-9317-4803-9223-ff41c3304cba
+  storage_dir: ./storage/desk2/concierge-internal
+generated: 1769062144
+sessions:
+  backend: File
+  session_timeout: 7200
+  sessions_storage_dir: ./storage/desk2/sessions
+users:
+  users_backend: file
+  users_config_file: ./storage/desk2/users/users-config.json
+  users_storage_dir: ./storage/desk2/users
+version: v0.1.0

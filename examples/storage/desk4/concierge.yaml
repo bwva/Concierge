@@ -1,0 +1,21 @@
+---
+auth:
+  auth_file: ./storage/desk4/auth.pwd
+components_configured:
+  - auth
+  - sessions
+  - users
+concierge:
+  backend: File
+  concierge_session_id: f4e7a712-a998-4511-971d-91a27389fc31
+  storage_dir: ./storage/desk4/concierge-internal
+generated: 1769062146
+sessions:
+  backend: File
+  session_timeout: 7200
+  sessions_storage_dir: ./storage/desk4/sessions
+users:
+  users_backend: database
+  users_config_file: ./storage/desk4/users/users-config.json
+  users_storage_dir: ./storage/desk4/users
+version: v0.1.0

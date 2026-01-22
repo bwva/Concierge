@@ -1,0 +1,4 @@
+alice	$argon2id$v=19$m=262144,t=3,p=1$6dcw5eN/5oGaR0c6sB5Dgg$b+yIk1PuKhE9wl/hA8DHMyUmBW6RKMwf1Q13Qi1e7Vs	|
+bob	$argon2id$v=19$m=262144,t=3,p=1$Us2bYIFp6xckJZonPMlADA$2iCo8LWh7GNgbeZC7lLI7OHXQ1ApQLsfxellPF03iFo	|
+carol	$argon2id$v=19$m=262144,t=3,p=1$P+9A+fQqIRTvE5Qw0DWPUw$UEMJhv607QEqOS24Z0SR953m4+pY2JT1Xn2I9VfNVA8	|
+dave	$argon2id$v=19$m=262144,t=3,p=1$ih5df0z61IgmRP0NH0Yj8g$zcfJpePXAFQEp58qko5CP5owLWpjyY6TeVDD9c4w5Mc	|

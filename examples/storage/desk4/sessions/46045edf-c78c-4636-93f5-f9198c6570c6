@@ -1,0 +1,21 @@
+{
+   "created_at" : 1769062147,
+   "user_id" : "dave",
+   "last_updated" : 1769062147,
+   "expires_at" : 1769065747,
+   "data" : {
+      "preferences" : {
+         "lang" : "en",
+         "theme" : "light"
+      },
+      "username" : "dave",
+      "login_time" : 1769062147
+   },
+   "session_id" : "46045edf-c78c-4636-93f5-f9198c6570c6",
+   "session_timeout" : "3600",
+   "status" : {
+      "dirty" : 0,
+      "state" : "active"
+   }
+}
+

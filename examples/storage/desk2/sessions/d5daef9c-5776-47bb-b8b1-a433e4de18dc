@@ -1,0 +1,22 @@
+{
+   "data" : {
+      "device" : "mobile",
+      "login_time" : 1769062145,
+      "username" : "alice",
+      "preferences" : {
+         "theme" : "light",
+         "lang" : "es"
+      }
+   },
+   "session_id" : "d5daef9c-5776-47bb-b8b1-a433e4de18dc",
+   "session_timeout" : "3600",
+   "status" : {
+      "dirty" : 0,
+      "state" : "active"
+   },
+   "user_id" : "alice",
+   "created_at" : 1769062145,
+   "last_updated" : 1769062145,
+   "expires_at" : 1769065745
+}
+

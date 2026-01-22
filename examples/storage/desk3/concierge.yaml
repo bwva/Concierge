@@ -1,0 +1,21 @@
+---
+auth:
+  auth_file: ./storage/desk3/auth.pwd
+components_configured:
+  - auth
+  - sessions
+  - users
+concierge:
+  backend: SQLite
+  concierge_session_id: 38b8756f-fd0e-4be8-a7ac-72c07bd7472e
+  storage_dir: ./storage/desk3/concierge-internal
+generated: 1769062145
+sessions:
+  backend: SQLite
+  session_timeout: 7200
+  sessions_storage_dir: ./storage/desk3/sessions
+users:
+  users_backend: yaml
+  users_config_file: ./storage/desk3/users/users-config.json
+  users_storage_dir: ./storage/desk3/users
+version: v0.1.0

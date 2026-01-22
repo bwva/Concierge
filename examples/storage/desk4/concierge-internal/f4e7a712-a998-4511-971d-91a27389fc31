@@ -1,0 +1,14 @@
+{
+   "session_id" : "f4e7a712-a998-4511-971d-91a27389fc31",
+   "data" : {},
+   "session_timeout" : "indefinite",
+   "status" : {
+      "dirty" : 0,
+      "state" : "active"
+   },
+   "created_at" : 1769062146,
+   "user_id" : "__concierge_id__",
+   "last_updated" : 1769062146,
+   "expires_at" : "indefinite"
+}
+
