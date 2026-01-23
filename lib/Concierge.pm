@@ -81,6 +81,7 @@ sub open_desk ($class, $desk_location) {
 	$instantiated_concierge->{sessions}	= Concierge::Sessions->new(
 		storage_dir => $desk_location
 	);
+
 	my $concierge_session_result	= $instantiated_concierge->{sessions}->get_session('__admin_session__');
 	croak "Failed to retrieve concierge session" unless $concierge_session_result->{success};
 	my $concierge_session	= $concierge_session_result->{session};
@@ -91,6 +92,75 @@ sub open_desk ($class, $desk_location) {
 	$instantiated_concierge->{auth}		= Concierge::Auth->new( { file => $concierge_config->{auth_file} } );
 
 	return { success => 1, message => 'Welcome!', concierge => $instantiated_concierge };
+}
+
+# Application-specific session data access methods
+# These methods work with user_session_fields declared during build_desk()
+
+sub get_app_data {
+    my ($self, $session_id, @field_names) = @_;
+
+    # Get the session
+    my $session_result = $self->{sessions}->get_session($session_id);
+    return { success => 0, message => 'Session not found' } unless $session_result->{success};
+    my $session = $session_result->{session};
+
+    # Get user_session_fields from concierge session
+    state $declared_fields ||= do {
+		my $concierge_data = $self->{concierge_session}->get_data()->{value};
+		$concierge_data->{concierge_config}{user_session_fields} // [];
+    };
+
+    # Get all session data
+    my $all_data = $session->get_data()->{value};
+
+    # If specific fields requested, return just those
+    if (@field_names) {
+        my %selection;
+        @selection{@field_names} = @{$all_data}{@field_names};
+        return \%selection;
+    }
+
+    # Otherwise return all declared fields, ensuring they exist (even if undef)
+    my %app_data;
+    foreach my $field ($declared_fields->@*) {
+        $app_data{$field} = $all_data->{$field} // undef;
+    }
+
+    return \%app_data;
+}
+
+sub set_app_data {
+    my ($self, $session_id, $new_data) = @_;
+
+    # Get the session
+    my $session_result = $self->{sessions}->get_session($session_id);
+    return { success => 0, message => 'Session not found' } unless $session_result->{success};
+
+    my $session = $session_result->{session};
+
+    # Merge new data with existing data
+    my $all_data = $session->get_data()->{value};
+    $all_data = { %$all_data, %$new_data };
+
+    # Save the updated data
+    $session->set_data($all_data);
+    my $save_result = $session->save();
+    return { success => 0, message => 'Save failed' } unless $save_result->{success};
+
+    # Get user_session_fields from concierge session
+    state $declared_fields ||= do {
+		my $concierge_data = $self->{concierge_session}->get_data()->{value};
+		$concierge_data->{concierge_config}{user_session_fields} // [];
+    };
+
+	# Return the updated app data for convenience
+    my %app_data;
+    foreach my $field ($declared_fields->@*) {
+        $app_data{$field} = $all_data->{$field} // undef;
+    }
+
+    return { success => 1, value => \%app_data };
 }
 
 1;
