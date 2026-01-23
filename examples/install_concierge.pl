@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
-use v5.40;
-use strict;
-use warnings;
+use v5.36;
+
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "/Volumes/Main/Development/Repositories/Concierge-Auth/lib";
