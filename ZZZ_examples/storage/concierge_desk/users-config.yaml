@@ -14,7 +14,7 @@ Configuration:
   Version: v0.7.0
   Backend: Concierge::Users::Database
   Storage Directory: /Volumes/Main/Development/Repositories/Concierge/examples/storage/concierge_desk
-  Generated: 2026-01-23 02:51:46
+  Generated: 2026-01-23 04:23:07
 
 Field Definitions:
   Core Fields:
@@ -229,21 +229,21 @@ Field Definitions:
     display_name:
       field_name: display_name
       type: text
-      required: 
+      required: 0
       default: null
       null_value: ""
 
     bio:
       field_name: bio
       type: text
-      required: 
+      required: 0
       default: null
       null_value: ""
 
     website:
       field_name: website
       type: text
-      required: 
+      required: 0
       default: null
       null_value: ""
 
