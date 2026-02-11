@@ -1,79 +1,85 @@
 # Concierge
 
-Service layer orchestrator for authentication, session management, and user data operations.
+Service layer orchestrator for user authentication, session management, and user data operations in Perl.
 
-## VERSION
+## Synopsis
 
-Version 0.1.0 (Under Active Development)
+```perl
+use Concierge::Setup;
+use Concierge;
 
-## STATUS
+# One-time desk setup
+Concierge::Setup::build_quick_desk(
+    './desk',
+    ['role', 'theme'],       # application-specific user fields
+);
 
-**This is a complete rewrite in progress.** No backward compatibility with previous Local::App::Concierge versions.
+# Runtime
+my $desk = Concierge->open_desk('./desk');
+my $concierge = $desk->{concierge};
 
-## DESCRIPTION
+# Register and log in a user
+$concierge->add_user({
+    user_id  => 'alice',
+    moniker  => 'Alice',
+    email    => 'alice@example.com',
+    password => 'secret123',
+    role     => 'admin',
+});
 
-Concierge provides a unified API integrating three component modules:
+my $login = $concierge->login_user({
+    user_id  => 'alice',
+    password => 'secret123',
+});
 
-- **Concierge::Auth** - Authentication with Argon2 password hashing
-- **Concierge::Sessions** - Session management (SQLite, PostgreSQL, Text backends)
-- **Concierge::Users** - User data operations (Database, CSV/TSV, YAML backends)
-
-Concierge coordinates the setup and configuration of these components, then provides a single interface for all operations. Applications using Concierge need only interact with its API - no direct contact with component modules required.
-
-## INSTALLATION
-
-Currently in development. Installation instructions will be added when the module is ready for CPAN.
-
-## PROJECT STRUCTURE
-
+my $user = $login->{user};  # Concierge::User object
 ```
-Concierge/
-├── lib/
-│   └── Concierge.pm          # Main orchestration module
-├── t/                        # Integration test suite
-├── examples/                 # Usage examples
-└── README.md                # This file
+
+## Description
+
+Concierge coordinates three component modules behind a single API:
+
+- **Concierge::Auth** -- Argon2 password authentication
+- **Concierge::Sessions** -- session management (SQLite or file backends)
+- **Concierge::Users** -- user data storage (SQLite, YAML, or CSV/TSV backends)
+
+It provides graduated user participation levels -- visitors, guests, and authenticated users -- each returning a `Concierge::User` object with methods appropriate to that level.
+
+## Installation
+
+Requires Perl 5.36 or later and the three component modules listed above.
+
+```bash
+perl Makefile.PL
+make
+make test
+make install
 ```
 
-## DEVELOPMENT NOTES
+## Modules
 
-### Current Phase
+- **Concierge** -- Main orchestrator: lifecycle methods, admin operations
+- **Concierge::Setup** -- One-time desk creation and configuration
+- **Concierge::User** -- User object returned by lifecycle methods
 
-Starting fresh with minimal implementation. Initial focus is on:
+## Documentation
 
-1. Documentation and evolving TODO list
-2. Component setup coordination methods
-3. Integration testing for component combinations
+See the POD in each module for full API documentation:
 
-### Component Configuration
+```bash
+perldoc Concierge
+perldoc Concierge::Setup
+perldoc Concierge::User
+```
 
-Each component has its own setup requirements that Concierge coordinates:
+## Status
 
-- **Auth**: Password file path
-- **Sessions**: Storage directory, backend type, timeout settings
-- **Users**: Storage directory, backend type, field definitions
+Under active development (v0.5.0). API may change before 1.0.
 
-Concierge will eventually provide a unified configuration interface that allows components to self-disclose their requirements and options.
+## Author
 
-### Testing Strategy
+Bruce Van Allen <bva@cruzio.com>
 
-Since all three components have their own comprehensive test suites, Concierge tests focus on:
+## License
 
-- Setup coordination (configuring components correctly)
-- Cross-component workflows (e.g., authenticate → create session → fetch user data)
-- Error handling across components
-- Component combinations (apps may use any 1, 2, or all 3 components)
-
-## RELATED MODULES
-
-- Concierge::Auth
-- Concierge::Sessions
-- Concierge::Users
-
-## AUTHOR AND LICENSE
-
-Copyright and license information to be added.
-
-## CONTRIBUTING
-
-This is currently in early development. Contribution guidelines will be added when the module stabilizes.
+Artistic License 2.0

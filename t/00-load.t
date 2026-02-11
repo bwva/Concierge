@@ -1,40 +1,67 @@
 #!/usr/bin/env perl
-
-use strict;
-use warnings;
+use v5.36;
+use lib 'lib';
 use Test2::V0;
 
-use lib 'lib';
+# Test module loading
+ok lives { require Concierge }, 'Concierge loads';
+ok lives { require Concierge::User }, 'Concierge::User loads';
+ok lives { require Concierge::Setup }, 'Concierge::Setup loads';
 
-# Test 1: Module loads (if this fails, test will die)
-use Concierge;
+# Test version is defined
+ok defined $Concierge::VERSION, 'Concierge version is defined';
+ok defined $Concierge::User::VERSION, 'Concierge::User version is defined';
 
-# Test 2: Version is defined
-ok($Concierge::VERSION, "Concierge version is defined");
+# Test that accessor methods exist
+can_ok 'Concierge', [qw(
+    new_concierge
+    open_desk
+    auth
+    users
+    sessions
+    save_user_keys
+    add_user
+    remove_user
+    verify_user
+    update_user_data
+    get_user_data
+    list_users
+    admit_visitor
+    checkin_guest
+    login_user
+    login_guest
+    restore_user
+    logout_user
+    verify_password
+    reset_password
+)];
 
-# Test 3: Can instantiate
-my $concierge;
-ok(lives {
-    $concierge = Concierge->new();
-}, "Can instantiate Concierge object") or note($@);
+# Test User object methods exist
+can_ok 'Concierge::User', [qw(
+    enable_user
+    user_id
+    user_key
+    session_id
+    is_visitor
+    is_guest
+    is_logged_in
+    session
+    get_session_data
+    update_session_data
+    moniker
+    email
+    user_status
+    access_level
+    get_user_field
+    refresh_user_data
+    update_user_data
+)];
 
-isa_ok($concierge, 'Concierge');
+# Test Setup methods exist
+can_ok 'Concierge::Setup', [qw(
+    build_quick_desk
+    build_desk
+    validate_setup_config
+)];
 
-# Test 4: Component configuration methods exist
-my @methods = qw(
-    configure_auth
-    configure_sessions
-    configure_users
-);
-
-can_ok($concierge, $_) for @methods;
-
-# Test 5: Class methods setup() and load() exist
-my @class_methods = qw(
-    setup
-    load
-);
-
-can_ok('Concierge', $_) for @class_methods;
-
-done_testing();
+done_testing;

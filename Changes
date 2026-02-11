@@ -1,0 +1,9 @@
+Revision history for Concierge
+
+v0.5.0 2026-02-11
+    - Initial CPAN release
+    - Service layer orchestrator for Auth, Sessions, and Users
+    - Graduated user participation: visitor, guest, logged-in
+    - User lifecycle management (admit, checkin, login, restore, logout)
+    - User data and session data access through Concierge::User objects
+    - Cookie/token-based session resumption via user_key mapping
