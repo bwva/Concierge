@@ -32,6 +32,20 @@ WriteMakefile(
         'lib/Concierge/User.pm'  => '$(INST_LIB)/Concierge/User.pm',
     },
 
+    META_MERGE => {
+        'meta-spec' => { version => 2 },
+        resources   => {
+            repository => {
+                type => 'git',
+                url  => 'https://github.com/bwva/Concierge.git',
+                web  => 'https://github.com/bwva/Concierge',
+            },
+            bugtracker => {
+                web => 'https://github.com/bwva/Concierge/issues',
+            },
+        },
+    },
+
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'Concierge-*' },
 );
