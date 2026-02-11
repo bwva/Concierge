@@ -1,7 +1,7 @@
-package Concierge v0.2.2;
+package Concierge v0.5.0;
 use v5.36;
 
-our $VERSION = 'v0.2.2';
+our $VERSION = 'v0.5.0';
 
 # ABSTRACT: Service layer orchestrator for authentication, sessions, and user data
 
@@ -161,7 +161,7 @@ sub save_user_keys ($self) {
     my $user_keys_file = File::Spec->catfile($self->{desk_location}, 'user_keys.json');
 
 #    my $json = encode_json($self->{user_keys});
-	my $json = JSON->new->utf8->pretty->encode( $self->{user_keys} );
+	my $json = JSON::PP->new->utf8->pretty->encode( $self->{user_keys} );
     open my $fh, ">", $user_keys_file
         or return { success => 0, message => "Cannot write user_keys file: $!" };
     print $fh $json;
@@ -786,7 +786,7 @@ Concierge - Service layer orchestrator for authentication, sessions, and user da
 
 =head1 VERSION
 
-v0.2.2
+v0.5.0
 
 =head1 SYNOPSIS
 
@@ -894,6 +894,42 @@ C<message>:
 
 Methods never C<croak> during normal operation. The one exception is
 C<open_desk()>, which croaks if the desk directory does not exist.
+
+=head2 Architecture
+
+Concierge ships with three I<identity core> components:
+
+=over 4
+
+=item L<Concierge::Auth> -- credential storage and verification
+
+=item L<Concierge::Sessions> -- session lifecycle and persistence
+
+=item L<Concierge::Users> -- user records with configurable field schemas
+
+=back
+
+These three are tightly orchestrated: a single C<login_user()> call
+authenticates via Auth, retrieves a record from Users, and creates a
+session through Sessions.  This coordination is the purpose of
+Concierge -- applications interact with the Concierge API and the
+L<Concierge::User> objects it returns, not with the components
+directly.
+
+The identity core is designed to be sufficient on its own, but the
+component pattern it follows -- backend abstraction, setup-time
+configuration, and Concierge-level orchestration -- is intentionally
+replicable.  An application that needs to manage organizations,
+assets, or other structured data alongside its users could introduce
+an additional component under the C<Concierge::> namespace, following
+the same conventions: a C<setup()> method for configuration, pluggable
+backends, and integration through Concierge's desk configuration.
+
+Each identity core component can also be substituted.  The interfaces
+are designed so an application could replace Argon2 with LDAP or OAuth
+in Auth, swap SQLite for PostgreSQL in Sessions or Users, or provide
+an entirely custom backend -- by supplying a module that conforms to
+the same method contract.
 
 =head1 METHODS
 

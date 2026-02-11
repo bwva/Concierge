@@ -1,14 +1,14 @@
-package Concierge::Setup v0.4.0;
+package Concierge::Setup v0.5.0;
 use v5.36;
 
-our $VERSION = 'v0.4.0';
+our $VERSION = 'v0.5.0';
 
 # ABSTRACT: Setup and configuration for Concierge desk initialization
 
 use Carp qw<carp croak>;
 use File::Spec;
 use File::Path qw/make_path/;
-use JSON::PP;
+use JSON::PP qw< encode_json decode_json >;
 use Concierge;
 
 # === COMPONENT MODULES ===
@@ -20,7 +20,7 @@ use Concierge::Users;
 # SIMPLE SETUP - Opinionated defaults for quick start
 # =============================================================================
 
-sub build_desk ($storage_dir, $app_fields=[]) {
+sub build_quick_desk ($storage_dir, $app_fields=[]) {
     # Simple, opinionated setup with reasonable defaults:
     # - Database sessions backend (SQLite via Concierge::Sessions)
     # - Database users backend (SQLite via Concierge::Users)
@@ -82,7 +82,7 @@ sub build_desk ($storage_dir, $app_fields=[]) {
         users_backend       => 'database',
     };
     # Encode to JSON with pretty formatting and write with trailing newline
-    my $json = JSON->new->utf8->pretty->encode($full_config) . "\n";
+    my $json = JSON::PP->new->utf8->pretty->encode($full_config) . "\n";
    
     my $concierge_conf_file	= File::Spec->catfile($storage_dir, 'concierge.conf');
     
@@ -105,7 +105,7 @@ sub build_desk ($storage_dir, $app_fields=[]) {
 # ADVANCED SETUP - Full control with custom configuration
 # =============================================================================
 
-sub build_custom_desk ($config) {
+sub build_desk ($config) {
     # Advanced setup with full configuration options:
     # - Separate storage directories per component
     # - Full Users.pm field configuration (include_standard_fields, field_overrides, etc.)
@@ -192,7 +192,7 @@ sub build_custom_desk ($config) {
         sessions_backend    => $sessions_backend,
         users_backend       => $users_config->{backend},
     };
-    my $json = JSON->new->utf8->pretty->encode($full_config) . "\n";
+    my $json = JSON::PP->new->utf8->pretty->encode($full_config) . "\n";
 
 	my $config_location	= $full_config->{storage_dir};
     my $concierge_conf_file	= File::Spec->catfile($config_location, 'concierge.conf');
@@ -263,20 +263,20 @@ Concierge::Setup - One-time desk creation and configuration for Concierge
 
 =head1 VERSION
 
-v0.4.0
+v0.5.0
 
 =head1 SYNOPSIS
 
     use Concierge::Setup;
 
     # Simple setup -- database backends, all standard user fields
-    my $result = Concierge::Setup::build_desk(
+    my $result = Concierge::Setup::build_quick_desk(
         './desk',
         ['role', 'theme'],       # application-specific user fields
     );
 
     # Advanced setup -- full control over backends and field configuration
-    my $result = Concierge::Setup::build_custom_desk({
+    my $result = Concierge::Setup::build_desk({
         storage => {
             base_dir     => './desk',
             sessions_dir => './desk/sessions',
@@ -289,8 +289,10 @@ v0.4.0
             backend => 'database',  # or 'file'
         },
         users => {
-            backend    => 'database',  # 'database', 'yaml', or 'file'
-            app_fields => ['membership_tier', 'department'],
+            backend                 => 'database',  # 'database', 'yaml', or 'file'
+            include_standard_fields => [qw/email phone first_name last_name/],
+            app_fields              => ['membership_tier', 'department'],
+            field_overrides         => [{ field_name => 'email', required => 1 }],
         },
     });
 
@@ -298,10 +300,16 @@ v0.4.0
 
 Concierge::Setup provides methods for one-time initialization of a
 Concierge desk -- the storage directory containing configuration and data
-files for all three component modules (Auth, Sessions, Users).
+files for the identity core components (Auth, Sessions, Users).
 
-Setup is separate from runtime operations. Use this module once to create
-a desk, then use L<Concierge/open_desk> at runtime.
+Setup is separate from runtime operations.  Use this module once to
+create a desk, then use L<Concierge/open_desk> at runtime.
+
+The configuration structure passed to C<build_desk()> is organized by
+component (C<auth>, C<sessions>, C<users>).  Applications that
+introduce additional components under the C<Concierge::> namespace can
+extend this structure with their own configuration blocks, following
+the same pattern.  See L<Concierge/Architecture> for details.
 
 =head2 The ./desk Convention
 
@@ -311,9 +319,9 @@ application root directory.
 
 =head1 METHODS
 
-=head2 build_desk
+=head2 build_quick_desk
 
-    my $result = Concierge::Setup::build_desk(
+    my $result = Concierge::Setup::build_quick_desk(
         $storage_dir,
         \@app_fields,
     );
@@ -336,16 +344,341 @@ B<Parameters:>
 Returns C<< { success => 1, desk => $desk_location } >> on success,
 or C<< { success => 0, message => '...' } >> on failure.
 
-=head2 build_custom_desk
+=head2 build_desk
 
-    my $result = Concierge::Setup::build_custom_desk(\%config);
+    my $result = Concierge::Setup::build_desk(\%config);
 
-Creates a desk with full control over backend selection, storage
-layout, and field configuration. See the SYNOPSIS for the configuration
-structure.
+Creates a desk with full control over backend selection, storage layout,
+and user field configuration.
 
-Returns C<< { success => 1, desk => $desk_location, config => \%config } >>
-on success.
+B<Configuration structure:>
+
+    {
+        storage => {
+            base_dir     => $path,       # required
+            sessions_dir => $path,       # default: base_dir
+            users_dir    => $path,       # default: base_dir
+        },
+        auth => {
+            file => $path,               # default: base_dir/auth.pwd
+        },
+        sessions => {
+            backend => 'database',       # 'database' or 'file'
+        },
+        users => {
+            backend                 => 'database',  # 'database', 'yaml', or 'file'
+            include_standard_fields => 'all',        # 'all' or \@field_names
+            app_fields              => \@fields,     # custom fields
+            field_overrides         => \@overrides,  # modify built-in fields
+        },
+    }
+
+The C<users> block is where field configuration happens.  The sections
+below describe the available fields and show how to customize them.
+
+=head3 User Field Reference
+
+Every user record draws from four field categories:
+
+B<Core fields> (always present):
+
+    user_id        system   Primary authentication identifier (max 30)
+    moniker        moniker  Display name, nickname, or initials (max 24)
+    user_status    enum     Eligible*, OK, Inactive (max 20)
+    access_level   enum     anon*, visitor, member, staff, admin (max 20)
+
+B<Standard fields> (selectable at setup):
+
+    first_name     name     max 50
+    middle_name    name     max 50
+    last_name      name     max 50
+    prefix         enum     (none) Dr Mr Ms Mrs Mx Prof Hon Sir Madam
+    suffix         enum     (none) Jr Sr II III IV V PhD MD DDS Esq
+    organization   text     max 100
+    title          text     max 100
+    email          email    max 255
+    phone          phone    max 20
+    text_ok        boolean
+    last_login_date timestamp
+    term_ends      date
+
+B<System fields> (auto-managed, always present):
+
+    last_mod_date  system   Updated on every write
+    created_date   system   Set once on creation
+
+Core and system fields cannot be removed.  Standard fields default to
+C<< required => 0 >>.
+
+=head3 Validator Types
+
+Ten built-in validators are available for field definitions and
+overrides:
+
+    text        Any string (max_length enforced if set)
+    email       user@domain.tld pattern
+    phone       Digits, spaces, hyphens, parens, optional +; min 7 chars
+    date        YYYY-MM-DD
+    timestamp   YYYY-MM-DD HH:MM:SS (or with T separator)
+    boolean     Strictly 0 or 1
+    integer     Optional minus, digits only
+    enum        Value must appear in the field's options list
+    moniker     2-24 alphanumeric, no spaces
+    name        Letters (incl. accented), hyphens, apostrophes, spaces
+
+See L<Concierge::Users::Meta/VALIDATOR TYPES> for patterns and null
+values.
+
+Set the environment variable C<USERS_SKIP_VALIDATION> to a true value
+to bypass all validation -- useful for bulk imports or testing.
+
+=head3 Selecting Standard Fields
+
+Include all standard fields:
+
+    users => {
+        backend                 => 'database',
+        include_standard_fields => 'all',
+    },
+
+Or pick only the ones your application needs:
+
+    users => {
+        backend                 => 'database',
+        include_standard_fields => [qw/first_name last_name email/],
+    },
+
+Pass an empty arrayref C<[]> to exclude all standard fields -- useful
+when your application defines its own fields from scratch.  Omitting
+C<include_standard_fields> (or setting it to any falsy value) includes
+all 12 standard fields, the same as C<'all'>.
+
+=head3 Adding Application Fields
+
+Custom fields are passed as C<app_fields>, an arrayref of field names
+(string shorthand) or full definition hashrefs:
+
+    users => {
+        backend    => 'database',
+        app_fields => [
+            'nickname',                          # string: text, not required
+            'bio',                               # string: text, not required
+            {                                    # hashref: full control
+                field_name  => 'department',
+                type        => 'enum',
+                options     => ['*Engineering', 'Sales', 'Support'],
+                required    => 1,
+                label       => 'Department',
+                description => 'Primary department assignment',
+            },
+            {
+                field_name    => 'employee_id',
+                type          => 'text',
+                validate_as   => 'moniker',      # text storage, moniker validation
+                required      => 1,
+                must_validate => 1,
+                max_length    => 12,
+            },
+        ],
+    },
+
+String shorthand creates a field with C<< type => 'text' >>,
+C<< required => 0 >>.
+
+B<Enum default convention:> In an C<options> arrayref, prefix exactly
+one value with C<*> to mark it as the default for new records.
+C<< ['*Community', 'Maker', 'Pro'] >> means new records get
+C<Community> unless another value is supplied.  A bare C<*> (as used
+by the built-in C<prefix> and C<suffix> fields) designates an
+empty-string default.  The C<*> is stripped internally before
+validation -- stored values never contain it.  If no C<*> option
+exists and no explicit C<default> is set, the default is C<"">.
+
+B<Available attributes for field definition hashrefs:>
+
+=over 4
+
+=item C<field_name> -- internal name (snake_case); required
+
+=item C<type> -- C<text>, C<email>, C<phone>, C<date>, C<timestamp>,
+C<boolean>, C<integer>, C<enum>
+
+=item C<validate_as> -- validator to use when different from C<type>
+(e.g., C<< validate_as => 'moniker' >> on a C<text> field applies
+alphanumeric-only validation while storing as text)
+
+=item C<label> -- human-readable display label; auto-generated from
+C<field_name> if omitted (e.g., C<badge_name> becomes "Badge Name")
+
+=item C<description> -- short explanatory text for documentation or
+UI hints
+
+=item C<required> -- C<1> if the field must have a non-null value on
+creation; C<0> otherwise
+
+=item C<must_validate> -- C<1> to reject the entire operation on
+validation failure; C<0> to silently drop the invalid value and
+append a warning (auto-enabled when C<< required => 1 >>)
+
+=item C<options> -- arrayref of allowed values for C<enum> fields;
+prefix one with C<*> to designate the default (e.g.,
+C<['*Free', 'Premium', 'Enterprise']>); a bare C<*> means an
+empty-string default
+
+=item C<default> -- value assigned on new-record creation when no
+value is supplied; for enum fields, auto-set from the C<*>-marked
+option if not specified explicitly
+
+=item C<null_value> -- sentinel representing "no data" for the field
+type (e.g., C<""> for text, C<0> for boolean, C<"0000-00-00"> for
+date); values equal to C<null_value> are treated as empty
+
+=item C<max_length> -- maximum character length; enforced by the
+C<text> validator and available as a UI hint
+
+=back
+
+See L<Concierge::Users::Meta/FIELD ATTRIBUTES> for the complete
+attribute reference.
+
+=head3 Modifying Standard Fields
+
+Use C<field_overrides> to change attributes of built-in fields without
+replacing them:
+
+    users => {
+        backend                 => 'database',
+        include_standard_fields => [qw/email phone organization/],
+        field_overrides         => [
+            {
+                field_name => 'email',
+                required   => 1,               # make email mandatory
+                label      => 'Work Email',
+            },
+            {
+                field_name => 'organization',
+                required   => 1,
+                max_length => 200,             # increase from default 100
+            },
+        ],
+    },
+
+B<Protected fields> (cannot be overridden): C<user_id>, C<created_date>,
+C<last_mod_date>.
+
+B<Protected attributes> (cannot be changed): C<field_name>, C<category>.
+
+B<Auto-behaviors:> changing C<type> auto-updates C<validate_as> to match;
+setting C<< required => 1 >> auto-enables C<must_validate>.
+
+See L<Concierge::Users::Meta/FIELD CUSTOMIZATION> for the complete
+customization reference and L<Concierge::Users::Meta/FIELD CATALOG> for
+full field specifications.
+
+=head3 Complete Example
+
+A community makerspace tracking members with custom fields, selective
+standard fields, and modified built-in defaults:
+
+    my $result = Concierge::Setup::build_desk({
+        storage => {
+            base_dir => './makerspace-desk',
+        },
+        sessions => { backend => 'database' },
+        users => {
+            backend                 => 'database',
+            include_standard_fields => [qw/
+                first_name last_name email phone organization
+            /],
+            field_overrides => [
+                {
+                    field_name => 'email',
+                    required   => 1,           # mandatory for members
+                    label      => 'Contact Email',
+                },
+                {
+                    field_name => 'organization',
+                    max_length => 200,         # increase from default 100
+                },
+            ],
+            app_fields => [
+                'skills',                      # string shorthand: text, optional
+                {
+                    field_name  => 'membership_tier',
+                    type        => 'enum',
+                    options     => ['*Community', 'Maker', 'Pro', 'Sponsor'],
+                    required    => 1,
+                    label       => 'Membership Tier',
+                    description => 'Determines access to equipment and hours',
+                },
+                {
+                    field_name    => 'badge_name',
+                    type          => 'text',
+                    validate_as   => 'moniker',  # alphanumeric validation
+                    required      => 1,
+                    must_validate => 1,
+                    max_length    => 16,
+                    label         => 'Badge Name',
+                    description   => 'Printed on member access badge',
+                },
+                {
+                    field_name => 'newsletter_ok',
+                    type       => 'boolean',
+                    default    => 0,
+                    label      => 'Newsletter Opt-in',
+                },
+            ],
+        },
+    });
+
+This produces a user schema with 4 core fields, 5 selected standard
+fields (C<email> now required), 4 application fields, and 2 system
+timestamps -- 15 fields total.  New members default to the C<Community>
+tier (marked with C<*>) and must provide a C<badge_name> that passes
+moniker validation (2-24 alphanumeric characters).
+
+=head3 Configuration Introspection
+
+After building a desk, the field schema can be inspected at runtime
+through L<Concierge::Users> (inherited from L<Concierge::Users::Meta>):
+
+    # Before setup: view built-in default field definitions
+    Concierge::Users::Meta->show_default_config();
+
+    # After setup: view the active schema for this desk
+    my $users = Concierge::Users->new('./makerspace-desk/users-config.json');
+    $users->show_config();
+
+    # Get UI-friendly hints for building forms dynamically
+    my $hints = $users->get_field_hints('membership_tier');
+    # Returns: { label, type, options, max_length, description, required }
+
+    # Get the ordered field list for this schema
+    my $fields = $users->get_user_fields();
+
+C<show_default_config()> prints the built-in field template to STDOUT --
+useful for reviewing available standard fields before writing a setup
+script.  C<show_config()> prints the YAML configuration generated
+during C<setup()>, reflecting the actual schema including any overrides
+and application fields.  C<get_field_hints()> returns a hashref of
+display-ready attributes for a single field, suitable for generating
+form elements programmatically.
+
+=head3 Data Archiving
+
+Calling C<< Concierge::Users->setup() >> when data already exists in
+the storage directory automatically archives the existing data files
+(renamed with a timestamp suffix) before creating new storage.  This
+means re-running a setup script to change the field schema will not
+silently destroy existing user records.
+
+B<Returns:>
+
+    { success => 1, desk => $base_dir, config => \%full_config }
+
+On failure:
+
+    { success => 0, message => '...' }
 
 =head2 validate_setup_config
 
