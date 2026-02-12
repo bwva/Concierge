@@ -66,11 +66,11 @@ DIRFILESEP = /
 DFSEP = $(DIRFILESEP)
 NAME = Concierge
 NAME_SYM = Concierge
-VERSION = v0.5.0
+VERSION = v0.5.1
 VERSION_MACRO = VERSION
-VERSION_SYM = v0_5_0
+VERSION_SYM = v0_5_1
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = v0.5.0
+XS_VERSION = v0.5.1
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -272,7 +272,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = Concierge
-DISTVNAME = Concierge-v0.5.0
+DISTVNAME = Concierge-v0.5.1
 
 
 # --- MakeMaker macro section:
@@ -524,7 +524,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) 'resources:' >> META_new.yml
 	$(NOECHO) $(ECHO) '  bugtracker: https://github.com/bwva/Concierge/issues' >> META_new.yml
 	$(NOECHO) $(ECHO) '  repository: https://github.com/bwva/Concierge.git' >> META_new.yml
-	$(NOECHO) $(ECHO) 'version: v0.5.0' >> META_new.yml
+	$(NOECHO) $(ECHO) 'version: v0.5.1' >> META_new.yml
 	$(NOECHO) $(ECHO) 'x_serialization_backend: '\''CPAN::Meta::YAML version 0.020'\''' >> META_new.yml
 	-$(NOECHO) $(MV) META_new.yml $(DISTVNAME)/META.yml
 	$(NOECHO) $(ECHO) Generating META.json
@@ -588,7 +588,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '         "web" : "https://github.com/bwva/Concierge"' >> META_new.json
 	$(NOECHO) $(ECHO) '      }' >> META_new.json
 	$(NOECHO) $(ECHO) '   },' >> META_new.json
-	$(NOECHO) $(ECHO) '   "version" : "v0.5.0",' >> META_new.json
+	$(NOECHO) $(ECHO) '   "version" : "v0.5.1",' >> META_new.json
 	$(NOECHO) $(ECHO) '   "x_serialization_backend" : "JSON::PP version 4.16"' >> META_new.json
 	$(NOECHO) $(ECHO) '}' >> META_new.json
 	-$(NOECHO) $(MV) META_new.json $(DISTVNAME)/META.json
@@ -898,7 +898,7 @@ testdb_static :: static pure_all
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd :
-	$(NOECHO) $(ECHO) '<SOFTPKG NAME="Concierge" VERSION="v0.5.0">' > Concierge.ppd
+	$(NOECHO) $(ECHO) '<SOFTPKG NAME="Concierge" VERSION="v0.5.1">' > Concierge.ppd
 	$(NOECHO) $(ECHO) '    <ABSTRACT>Service layer orchestrator for authentication, sessions, and user data</ABSTRACT>' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '    <AUTHOR>Bruce Van Allen &lt;bva@cruzio.com&gt;</AUTHOR>' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '    <IMPLEMENTATION>' >> Concierge.ppd

@@ -1,7 +1,7 @@
-package Concierge::Setup v0.5.0;
+package Concierge::Setup v0.5.1;
 use v5.36;
 
-our $VERSION = 'v0.5.0';
+our $VERSION = 'v0.5.1';
 
 # ABSTRACT: Setup and configuration for Concierge desk initialization
 
@@ -563,6 +563,19 @@ replacing them:
         ],
     },
 
+B<Overriding enum options:> Core fields like C<user_status> and
+C<access_level> are always present, but their C<options> are not fixed.
+Replace them with values that fit your domain:
+
+    # Makerspace member status instead of the default
+    # Eligible / OK / Inactive
+    field_overrides => [
+        {
+            field_name => 'user_status',
+            options    => [qw( *Applicant Novice Skilled Expert Mentor Steward )],
+        },
+    ],
+
 B<Protected fields> (cannot be overridden): C<user_id>, C<created_date>,
 C<last_mod_date>.
 
@@ -591,6 +604,10 @@ standard fields, and modified built-in defaults:
                 first_name last_name email phone organization
             /],
             field_overrides => [
+                {
+                    field_name => 'user_status',
+                    options    => [qw( *Applicant Novice Skilled Expert Mentor Steward )],
+                },
                 {
                     field_name => 'email',
                     required   => 1,           # mandatory for members
@@ -633,9 +650,11 @@ standard fields, and modified built-in defaults:
 
 This produces a user schema with 4 core fields, 5 selected standard
 fields (C<email> now required), 4 application fields, and 2 system
-timestamps -- 15 fields total.  New members default to the C<Community>
-tier (marked with C<*>) and must provide a C<badge_name> that passes
-moniker validation (2-24 alphanumeric characters).
+timestamps -- 15 fields total.  The core C<user_status> field keeps its
+usual role but uses makerspace-specific statuses (defaulting to
+C<Applicant>).  New members default to the C<Community> tier (marked
+with C<*>) and must provide a C<badge_name> that passes moniker
+validation (2-24 alphanumeric characters).
 
 =head3 Configuration Introspection
 
