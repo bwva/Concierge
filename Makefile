@@ -22,7 +22,7 @@
 #     MIN_PERL_VERSION => q[5.036]
 #     NAME => q[Concierge]
 #     PM => { lib/Concierge.pm=>q[$(INST_LIB)/Concierge.pm], lib/Concierge/Setup.pm=>q[$(INST_LIB)/Concierge/Setup.pm], lib/Concierge/User.pm=>q[$(INST_LIB)/Concierge/User.pm] }
-#     PREREQ_PM => { Carp=>q[0], Concierge::Auth=>q[0], Concierge::Sessions=>q[0], Concierge::Users=>q[0], JSON::PP=>q[0], Params::Filter=>q[0], Test2::V0=>q[0] }
+#     PREREQ_PM => { Carp=>q[0], Concierge::Auth=>q[0], Concierge::Sessions=>q[0], Concierge::Users=>q[0], JSON::PP=>q[0], Params::Filter=>q[0.014], Test2::V0=>q[0] }
 #     TEST_REQUIRES => { Test2::V0=>q[0] }
 #     VERSION_FROM => q[lib/Concierge.pm]
 #     clean => { FILES=>q[Concierge-*] }
@@ -66,11 +66,11 @@ DIRFILESEP = /
 DFSEP = $(DIRFILESEP)
 NAME = Concierge
 NAME_SYM = Concierge
-VERSION = v0.5.1
+VERSION = v0.5.6
 VERSION_MACRO = VERSION
-VERSION_SYM = v0_5_1
+VERSION_SYM = v0_5_6
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = v0.5.1
+XS_VERSION = v0.5.6
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -272,7 +272,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = Concierge
-DISTVNAME = Concierge-v0.5.1
+DISTVNAME = Concierge-v0.5.6
 
 
 # --- MakeMaker macro section:
@@ -519,12 +519,12 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '  Concierge::Sessions: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  Concierge::Users: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  JSON::PP: '\''0'\''' >> META_new.yml
-	$(NOECHO) $(ECHO) '  Params::Filter: '\''0'\''' >> META_new.yml
+	$(NOECHO) $(ECHO) '  Params::Filter: '\''0.014'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  perl: '\''5.036'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'resources:' >> META_new.yml
 	$(NOECHO) $(ECHO) '  bugtracker: https://github.com/bwva/Concierge/issues' >> META_new.yml
 	$(NOECHO) $(ECHO) '  repository: https://github.com/bwva/Concierge.git' >> META_new.yml
-	$(NOECHO) $(ECHO) 'version: v0.5.1' >> META_new.yml
+	$(NOECHO) $(ECHO) 'version: v0.5.6' >> META_new.yml
 	$(NOECHO) $(ECHO) 'x_serialization_backend: '\''CPAN::Meta::YAML version 0.020'\''' >> META_new.yml
 	-$(NOECHO) $(MV) META_new.yml $(DISTVNAME)/META.yml
 	$(NOECHO) $(ECHO) Generating META.json
@@ -567,7 +567,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '            "Concierge::Sessions" : "0",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "Concierge::Users" : "0",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "JSON::PP" : "0",' >> META_new.json
-	$(NOECHO) $(ECHO) '            "Params::Filter" : "0",' >> META_new.json
+	$(NOECHO) $(ECHO) '            "Params::Filter" : "0.014",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "perl" : "5.036"' >> META_new.json
 	$(NOECHO) $(ECHO) '         }' >> META_new.json
 	$(NOECHO) $(ECHO) '      },' >> META_new.json
@@ -588,7 +588,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '         "web" : "https://github.com/bwva/Concierge"' >> META_new.json
 	$(NOECHO) $(ECHO) '      }' >> META_new.json
 	$(NOECHO) $(ECHO) '   },' >> META_new.json
-	$(NOECHO) $(ECHO) '   "version" : "v0.5.1",' >> META_new.json
+	$(NOECHO) $(ECHO) '   "version" : "v0.5.6",' >> META_new.json
 	$(NOECHO) $(ECHO) '   "x_serialization_backend" : "JSON::PP version 4.16"' >> META_new.json
 	$(NOECHO) $(ECHO) '}' >> META_new.json
 	-$(NOECHO) $(MV) META_new.json $(DISTVNAME)/META.json
@@ -898,7 +898,7 @@ testdb_static :: static pure_all
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd :
-	$(NOECHO) $(ECHO) '<SOFTPKG NAME="Concierge" VERSION="v0.5.1">' > Concierge.ppd
+	$(NOECHO) $(ECHO) '<SOFTPKG NAME="Concierge" VERSION="v0.5.6">' > Concierge.ppd
 	$(NOECHO) $(ECHO) '    <ABSTRACT>Service layer orchestrator for authentication, sessions, and user data</ABSTRACT>' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '    <AUTHOR>Bruce Van Allen &lt;bva@cruzio.com&gt;</AUTHOR>' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '    <IMPLEMENTATION>' >> Concierge.ppd
@@ -908,7 +908,7 @@ ppd :
 	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Concierge::Sessions" />' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Concierge::Users" />' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '        <REQUIRE NAME="JSON::PP" />' >> Concierge.ppd
-	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Params::Filter" />' >> Concierge.ppd
+	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Params::Filter" VERSION="0.014" />' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '        <ARCHITECTURE NAME="darwin-2level-5.42" />' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '        <CODEBASE HREF="" />' >> Concierge.ppd
 	$(NOECHO) $(ECHO) '    </IMPLEMENTATION>' >> Concierge.ppd
