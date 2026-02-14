@@ -494,7 +494,7 @@ empty-string default.  The C<*> is stripped internally before
 validation -- stored values never contain it.  If no C<*> option
 exists and no explicit C<default> is set, the default is C<"">.
 
-B<Available attributes for field definition hashrefs:>
+=head3 Available attributes for field definition hashrefs
 
 =over 4
 
