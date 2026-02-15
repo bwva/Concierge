@@ -786,7 +786,7 @@ Concierge - Service layer orchestrator for authentication, sessions, and user da
 
 =head1 VERSION
 
-v0.5.7
+v0.5.9
 
 =head1 SYNOPSIS
 
