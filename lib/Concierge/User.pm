@@ -1,7 +1,7 @@
-package Concierge::User v0.6.0;
+package Concierge::User v0.6.1;
 use v5.36;
 
-our $VERSION = 'v0.6.0';
+our $VERSION = 'v0.6.1';
 
 # ABSTRACT: User object enabled by Concierge
 
@@ -178,7 +178,7 @@ Concierge::User - User object enabled by Concierge
 
 =head1 VERSION
 
-v0.6.0
+v0.6.1
 
 =head1 SYNOPSIS
 
