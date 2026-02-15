@@ -1,13 +1,29 @@
-# OS files
-.DS_Store
-
-# ExtUtils::MakeMaker generated files
+# Perl build artifacts
+blib/
 Makefile
 Makefile.old
 MYMETA.json
 MYMETA.yml
+META.json
+META.yml
 pm_to_blib
-blib/
 
 # Distribution tarballs
-Concierge-*.tar.gz
+*.tar.gz
+
+# macOS
+.DS_Store
+
+# Editor and temp files
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+*.tmp
+
+# Test coverage
+cover_db/
+
+# Backup files
+MANIFEST.bak
