@@ -1,5 +1,8 @@
 Revision history for Concierge
 
+v0.5.9  2026-02-15
+    - Fixed distribution issue with MANIFEST.SKIP
+
 v0.5.8  2026-02-15
     - Fixed distribution issue with MANIFEST.SKIP
 
