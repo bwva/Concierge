@@ -45,15 +45,15 @@ WriteMakefile(
         provides => {
             'Concierge' => {
                 file    => 'lib/Concierge.pm',
-                version => 'v0.5.7',
+                version => 'v0.5.8',
             },
             'Concierge::Setup' => {
                 file    => 'lib/Concierge/Setup.pm',
-                version => 'v0.5.7',
+                version => 'v0.5.8',
             },
             'Concierge::User' => {
                 file    => 'lib/Concierge/User.pm',
-                version => 'v0.5.7',
+                version => 'v0.5.8',
             },
         },
     },
