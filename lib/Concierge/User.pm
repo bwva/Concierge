@@ -178,7 +178,7 @@ Concierge::User - User object enabled by Concierge
 
 =head1 VERSION
 
-v0.5.7
+v0.6.0
 
 =head1 SYNOPSIS
 
