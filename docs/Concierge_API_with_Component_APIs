@@ -77,7 +77,7 @@ Auth.pm
 	validatePwd
 	encryptPwd
 * generators - Not Public API via Concierge?
-	gen_crypt_token
+X	gen_crypt_token	# deprecated
 	gen_random_string
 	gen_random_token
 	gen_token
