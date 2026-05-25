@@ -1,5 +1,10 @@
 Revision history for Concierge
 
+v0.7.1  2026-05-25
+    - Fix POD rendering: C<{ ... }> → C<< { ... } >> in EXTENSIBILITY section
+    - Expand Return Values documentation with per-method-category field list
+    - Add Password Operations intro clarifying add_user() handles registration
+
 v0.7.0  2026-05-21
     - Added Concierge::Base: records-store base class for custom components
     - Added EXTENSIBILITY POD section to Concierge.pm (component substitution
