@@ -71,11 +71,15 @@ See the POD in each module for full API documentation:
 perldoc Concierge
 perldoc Concierge::Setup
 perldoc Concierge::User
+perldoc Concierge::Base
+perldoc Concierge::Auth
+perldoc Concierge::Sessions
+perldoc Concierge::Users
 ```
 
 ## Status
 
-Under active development (v0.7.0). API may change before 1.0.
+Under active development (v0.7.1). API may change before 1.0.
 
 ## Author
 
