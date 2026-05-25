@@ -1,5 +1,10 @@
 Revision history for Concierge
 
+v0.7.2  2026-05-25
+    - Add "What the Suite Provides" section to DESCRIPTION in Concierge.pm
+    - Expand README.md into a full suite overview (components, lifecycle,
+      backends, field schema, return values, extensibility, installation)
+
 v0.7.1  2026-05-25
     - Fix POD rendering: C<{ ... }> → C<< { ... } >> in EXTENSIBILITY section
     - Expand Return Values documentation with per-method-category field list

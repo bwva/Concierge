@@ -1,7 +1,7 @@
-package Concierge v0.7.1;
+package Concierge v0.7.2;
 use v5.36;
 
-our $VERSION = 'v0.7.1';
+our $VERSION = 'v0.7.2';
 
 # ABSTRACT: Service layer orchestrator for authentication, sessions, and user data
 
@@ -786,7 +786,7 @@ Concierge - Service layer orchestrator for authentication, sessions, and user da
 
 =head1 VERSION
 
-v0.7.1
+v0.7.2
 
 =head1 SYNOPSIS
 
@@ -839,6 +839,34 @@ Concierge coordinates three component modules behind a single API:
 
 Applications interact only with Concierge and the L<Concierge::User> objects
 it returns. The component modules are never exposed directly.
+
+=head2 What the Suite Provides
+
+Concierge handles orchestration -- coordinating components, managing the
+user_key mapping, and returning consistent structured results. The
+capabilities of the suite live in the three components:
+
+B<Authentication> (L<Concierge::Auth>): Argon2id password hashing and
+verification; no plaintext credentials are ever written to disk. Also
+provides random token, UUID, word-passphrase, and hex-ID generators. The
+component is substitutable: any replacement implementing the same method
+contract (C<checkPwd>, C<setPwd>, C<resetPwd>, etc.) can replace it for
+LDAP, OAuth, or any other scheme.
+
+B<Sessions> (L<Concierge::Sessions>): Full session lifecycle -- creation,
+retrieval, expiry, and cleanup -- with SQLite, file, or in-memory backends.
+Sessions carry arbitrary key/value data. A single-session-per-user policy
+is enforced: creating a new session automatically removes any prior session
+for that user. Expired sessions are cleaned up each time a desk is opened.
+
+B<User Records> (L<Concierge::Users>): User data store with a configurable
+field schema. Standard fields (C<moniker>, C<email>, C<phone>,
+C<access_level>, C<user_status>, C<term_ends>, and others) are built in and
+can be selectively overridden. Applications add their own fields via
+C<app_fields> at setup time. Supports SQLite, YAML, and CSV/TSV backends,
+with filtering and listing operations.
+
+For the full API of any component, see its own documentation.
 
 =head2 Desks
 
