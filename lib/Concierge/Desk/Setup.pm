@@ -1,7 +1,7 @@
-package Concierge::Setup v0.7.2;
+package Concierge::Desk::Setup v0.8.0;
 use v5.36;
 
-our $VERSION = 'v0.7.2';
+our $VERSION = 'v0.8.0';
 
 # ABSTRACT: Setup and configuration for Concierge desk initialization
 
@@ -257,24 +257,24 @@ __END__
 
 =head1 NAME
 
-Concierge::Setup - One-time desk creation and configuration for Concierge
+Concierge::Desk::Setup - One-time desk creation and configuration for Concierge
 
 =head1 VERSION
 
-v0.7.2
+v0.8.0
 
 =head1 SYNOPSIS
 
-    use Concierge::Setup;
+    use Concierge::Desk::Setup;
 
     # Simple setup -- database backends, all standard user fields
-    my $result = Concierge::Setup::build_quick_desk(
+    my $result = Concierge::Desk::Setup::build_quick_desk(
         './desk',
         ['role', 'theme'],       # application-specific user fields
     );
 
     # Advanced setup -- full control over backends and field configuration
-    my $result = Concierge::Setup::build_desk({
+    my $result = Concierge::Desk::Setup::build_desk({
         storage => {
             base_dir     => './desk',
             sessions_dir => './desk/sessions',
@@ -296,7 +296,7 @@ v0.7.2
 
 =head1 DESCRIPTION
 
-Concierge::Setup provides methods for one-time initialization of a
+Concierge::Desk::Setup provides methods for one-time initialization of a
 Concierge desk -- the storage directory containing configuration and data
 files for the identity core components (Auth, Sessions, Users).
 
@@ -319,7 +319,7 @@ application root directory.
 
 =head2 build_quick_desk
 
-    my $result = Concierge::Setup::build_quick_desk(
+    my $result = Concierge::Desk::Setup::build_quick_desk(
         $storage_dir,
         \@app_fields,
     );
@@ -348,7 +348,7 @@ or C<< { success => 0, message => '...' } >> on failure.
 
 =head2 build_desk
 
-    my $result = Concierge::Setup::build_desk(\%config);
+    my $result = Concierge::Desk::Setup::build_desk(\%config);
 
 Creates a desk with full control over backend selection, storage layout,
 and user field configuration.
@@ -616,7 +616,7 @@ full field specifications.
 A community makerspace tracking members with custom fields, selective
 standard fields, and modified built-in defaults:
 
-    my $result = Concierge::Setup::build_desk({
+    my $result = Concierge::Desk::Setup::build_desk({
         storage => {
             base_dir => './makerspace-desk',
         },
@@ -724,7 +724,7 @@ On failure:
 
 =head2 validate_setup_config
 
-    my $result = Concierge::Setup::validate_setup_config(\%config);
+    my $result = Concierge::Desk::Setup::validate_setup_config(\%config);
 
 Validates a configuration hashref without creating anything. Returns
 C<< { success => 1 } >> or C<< { success => 0, errors => [...] } >>.

@@ -1,7 +1,7 @@
-package Concierge::Base v0.7.2;
+package Concierge::Desk::Base v0.8.0;
 use v5.36;
 
-our $VERSION = 'v0.7.2';
+our $VERSION = 'v0.8.0';
 
 # ABSTRACT: Records-store base class for Concierge component modules
 
@@ -47,16 +47,16 @@ __END__
 
 =head1 NAME
 
-Concierge::Base - Records-store base class for Concierge component modules
+Concierge::Desk::Base - Records-store base class for Concierge component modules
 
 =head1 VERSION
 
-v0.7.2
+v0.8.0
 
 =head1 SYNOPSIS
 
     package Concierge::Organizations;
-    use parent 'Concierge::Base';
+    use parent 'Concierge::Desk::Base';
 
     sub new ($class, $config_file) {
         my $self = bless {}, $class;
@@ -82,14 +82,14 @@ v0.7.2
 
 =head1 DESCRIPTION
 
-C<Concierge::Base> is an abstract base class for records-store components
+C<Concierge::Desk::Base> is an abstract base class for records-store components
 that integrate with Concierge desks.  It documents the method contract that
 Concierge expects from any additional component -- such as
 C<Concierge::Organizations>, C<Concierge::Assets>, or similar -- and provides
 stub implementations that die informatively if a subclass omits a required
 method.
 
-C<Concierge::Base> does B<not> depend on any of the identity core modules
+C<Concierge::Desk::Base> does B<not> depend on any of the identity core modules
 (L<Concierge::Auth>, L<Concierge::Sessions>, L<Concierge::Users>) and does
 not need to be used alongside them.  It is purely a contract-documentation
 and safety-net class.
@@ -131,7 +131,7 @@ Subclasses must override this method.
     my $result = $component->setup($config);
 
 One-time setup called during desk initialization (e.g., from
-C<Concierge::Setup>).  C<$config> is a hashref containing the component's
+C<Concierge::Desk::Setup>).  C<$config> is a hashref containing the component's
 block from the desk configuration -- whatever key/value pairs your component
 needs (storage path, backend type, field schema, etc.).
 
@@ -269,7 +269,7 @@ A minimal subclass skeleton:
 
     package Concierge::Organizations;
     use v5.36;
-    use parent 'Concierge::Base';
+    use parent 'Concierge::Desk::Base';
     use Carp qw<croak>;
 
     our $VERSION = 'v0.1.0';
@@ -336,7 +336,7 @@ A minimal subclass skeleton:
 L<Concierge> -- main orchestrator; see its EXTENSIBILITY section for the
 component substitution and addition pattern.
 
-L<Concierge::Setup> -- desk creation and configuration.
+L<Concierge::Desk::Setup> -- desk creation and configuration.
 
 L<Concierge::Users> -- the identity core records-store component, which
 provides a production example of a records-store component integrated with

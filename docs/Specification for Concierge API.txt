@@ -28,6 +28,6 @@ B. Concierge object methods - use of component methods
 C.  Concierge/User.pm API General Specification
 The user operating (an instance of) the application.
 
-1. Upon admitting, checking in or logging in a user, the concierge object returns a user object to the application. The user object's methods (Concierge::User) can return its status, metadata, user data, and session info, and can set its own session info and and update (some of) its own user data. 
+1. Upon admitting, checking in or logging in a user, the concierge object returns a user object to the application. The user object's methods (Concierge::Desk::User) can return its status, metadata, user data, and session info, and can set its own session info and and update (some of) its own user data. 
 
 2. As the operator of an instance of the application, the user object's range of application actions is based on its visitor, guest, or user credentials, and if logged in, information such as its user_status and access_level, which will be included among its standard user data fields.

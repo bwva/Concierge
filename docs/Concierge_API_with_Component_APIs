@@ -26,7 +26,7 @@ Concierge.pm
 ?	checkout_guest			concierge with: sessions
 √	logout_user				concierge with: sessions
 
-Concierge::User
+Concierge::Desk::User
 ===============
 * user object: application operations
 	[user status methods]		?

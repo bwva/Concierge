@@ -8,11 +8,11 @@ credential storage, session backends, or user record schemas directly.
 ## Synopsis
 
 ```perl
-use Concierge::Setup;
+use Concierge::Desk::Setup;
 use Concierge;
 
 # One-time desk setup
-Concierge::Setup::build_quick_desk(
+Concierge::Desk::Setup::build_quick_desk(
     './desk',
     ['role', 'theme'],       # application-specific user fields
 );
@@ -35,7 +35,7 @@ my $login = $concierge->login_user({
     password => 'secret123',
 });
 
-my $user = $login->{user};  # Concierge::User object
+my $user = $login->{user};  # Concierge::Desk::User object
 say $user->moniker;         # "Alice"
 say $user->session_id;      # random hex token
 ```
@@ -45,14 +45,14 @@ say $user->session_id;      # random hex token
 ### Desks
 
 A *desk* is a directory containing the configuration and data files for all
-three components. You create one with `Concierge::Setup`, then open it at
+three components. You create one with `Concierge::Desk::Setup`, then open it at
 runtime with `open_desk()`. Opening a desk instantiates all components from
 the saved configuration and runs session cleanup automatically.
 
 ```perl
 # One-time setup (run once, not on every request)
-use Concierge::Setup;
-Concierge::Setup->build_desk('./desk', {
+use Concierge::Desk::Setup;
+Concierge::Desk::Setup->build_desk('./desk', {
     users_backend    => 'database',
     sessions_backend => 'sqlite',
     app_fields       => ['department', 'theme'],
@@ -67,7 +67,7 @@ my $concierge = $result->{concierge};
 ### User Participation Levels
 
 Concierge provides three graduated levels, each returning a
-`Concierge::User` object with methods appropriate to that level:
+`Concierge::Desk::User` object with methods appropriate to that level:
 
 | Level | Method | Session | User record | Auth |
 |---|---|---|---|---|
@@ -127,7 +127,7 @@ Standard fields include:
 Applications extend this with `app_fields` at setup time:
 
 ```perl
-Concierge::Setup->build_desk('./desk', {
+Concierge::Desk::Setup->build_desk('./desk', {
     app_fields => [
         { field_name => 'department', type => 'text' },
         { field_name => 'plan',       type => 'enum',
@@ -159,7 +159,7 @@ Concierge safe to use in event-loop and persistent-process environments.
 
 Each identity core component can be replaced with a conforming alternative.
 Additional components (Organizations, Assets, Guides, Catalog, etc.) can be
-added following the same conventions using `Concierge::Base` as a base class.
+added following the same conventions using `Concierge::Desk::Base` as a base class.
 
 See the `EXTENSIBILITY` section in `perldoc Concierge` for the method
 contracts and patterns for both substitution and extension.
@@ -188,9 +188,9 @@ Requires Perl 5.36 or later.
 
 ```bash
 perldoc Concierge          # orchestration API, lifecycle methods, extensibility
-perldoc Concierge::Setup   # desk creation and configuration
-perldoc Concierge::User    # user object methods
-perldoc Concierge::Base    # base class for additional components
+perldoc Concierge::Desk::Setup   # desk creation and configuration
+perldoc Concierge::Desk::User    # user object methods
+perldoc Concierge::Desk::Base    # base class for additional components
 perldoc Concierge::Auth    # authentication and token generation
 perldoc Concierge::Sessions  # session lifecycle and backends
 perldoc Concierge::Users   # user records, field schema, backends
@@ -198,7 +198,7 @@ perldoc Concierge::Users   # user records, field schema, backends
 
 ## Status
 
-Under active development (v0.7.2). API may change before 1.0.
+Under active development (v0.8.0). API may change before 1.0.
 
 ## Author
 

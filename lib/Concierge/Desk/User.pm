@@ -1,7 +1,7 @@
-package Concierge::User v0.7.2;
+package Concierge::Desk::User v0.8.0;
 use v5.36;
 
-our $VERSION = 'v0.7.2';
+our $VERSION = 'v0.8.0';
 
 # ABSTRACT: User object enabled by Concierge
 
@@ -174,11 +174,11 @@ __END__
 
 =head1 NAME
 
-Concierge::User - User object enabled by Concierge
+Concierge::Desk::User - User object enabled by Concierge
 
 =head1 VERSION
 
-v0.7.2
+v0.8.0
 
 =head1 SYNOPSIS
 
@@ -221,7 +221,7 @@ v0.7.2
 
 =head1 DESCRIPTION
 
-Concierge::User represents a user operating an instance of the application.
+Concierge::Desk::User represents a user operating an instance of the application.
 Objects are created by Concierge's lifecycle methods (C<admit_visitor>,
 C<checkin_guest>, C<login_user>) and returned to the application.
 
@@ -246,7 +246,7 @@ does not need to know about or contact the concierge to access its backends.
 
 =head2 enable_user
 
-    my $user = Concierge::User->enable_user($user_id, \%options);
+    my $user = Concierge::Desk::User->enable_user($user_id, \%options);
 
 Called internally by Concierge. Applications should not call this directly.
 

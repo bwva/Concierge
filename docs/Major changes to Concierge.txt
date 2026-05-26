@@ -8,19 +8,19 @@ c) `login_guest()` converts a guest to a logged-in user, extracting any session 
 These join:
 d) `login_user()`, authenticates a user, assigns a unique identfier, retrieves their user data, and creates a session; on success returns a full user object.
 
-# User objects are instances of Concierge::User  # <-- NOT Concierge::Users
-Upon success with one of the methods above, Concierge calls Concierge::User->enable_user( $user_id, $session, $user_data ); on success enable_user() returns a user object to the application.
+# User objects are instances of Concierge::Desk::User  # <-- NOT Concierge::Users
+Upon success with one of the methods above, Concierge calls Concierge::Desk::User->enable_user( $user_id, $session, $user_data ); on success enable_user() returns a user object to the application.
 A user object has its own API methods for:
 - introspection: get status/metadata
 - session data: get/set ("app_data")
 - user data: retrieve/update
 
-When Concierge calls Concierge::User->enable_user(...), the concierge object stores the new user object's unique identifier and its session_id in a lookup key, kept in memory and in a simple persistent store. This allows the concierge object access to a session for management. The concierge may only access the user object's internals via the user object's API methods. 
+When Concierge calls Concierge::Desk::User->enable_user(...), the concierge object stores the new user object's unique identifier and its session_id in a lookup key, kept in memory and in a simple persistent store. This allows the concierge object access to a session for management. The concierge may only access the user object's internals via the user object's API methods. 
 
 When the concierge object is instantiated with `open_desk()`, that method includes running the session backend's `cleanup_sessions()` method (`replaces cleanup_expired()`), which collects and returns a list of any sessions still current; that list is used to start/refresh the concierge's user lookup key.
 Contrary to previous versions, most of the application's operations are done by the user object directly, not via the concierge object, which mostly sits in the background.
 
-The created User object should hold its own metadata, session data, and user data in memory during operation; its methods, provided in Concierge::User, should include saving/storing its data and refreshing it from storage as needed during application operations. 
+The created User object should hold its own metadata, session data, and user data in memory during operation; its methods, provided in Concierge::Desk::User, should include saving/storing its data and refreshing it from storage as needed during application operations. 
 
 # Concierge no longer stores its config or its user lookup key in a session. Instead, it saves its config and lookup key directly files, and loads them into memory when instantiated. 
 
@@ -31,7 +31,7 @@ The created User object should hold its own metadata, session data, and user dat
 
 3. I have replaced use of a session for the concierge object, but have not tested whether the new non-session config and lookup key plan works.
 
-4. Bulk import of user records to the Users backend is on hold for the moment. When work resumes, importing will be done with methods from the modules for the user data backends, not done by Concierge::Setup, as we had started work on previously. When work resumes, in the document '/Volumes/Main/Development/Repositories/Concierge/BULK_IMPORT_FEATURE.md' we will disregard all references to any role in importing by Concierge::Setup. Don't do anything related to bulk import, except help me remove any remaining code for it in Concierge or Concierge::Setup.
+4. Bulk import of user records to the Users backend is on hold for the moment. When work resumes, importing will be done with methods from the modules for the user data backends, not done by Concierge::Desk::Setup, as we had started work on previously. When work resumes, in the document '/Volumes/Main/Development/Repositories/Concierge/BULK_IMPORT_FEATURE.md' we will disregard all references to any role in importing by Concierge::Desk::Setup. Don't do anything related to bulk import, except help me remove any remaining code for it in Concierge or Concierge::Desk::Setup.
 
 5. Remember that there is NO NEED for backward compatibility or workarounds for developers expecting the previous API. Also no need for comments about how things have changed.
 

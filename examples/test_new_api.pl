@@ -5,7 +5,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Data::Dumper;
 
-use Concierge::Setup;
+use Concierge::Desk::Setup;
 use Concierge;
 
 # Clean test environment
@@ -16,7 +16,7 @@ say "Concierge version: $Concierge::VERSION";
 say "Setting up test desk in: $test_dir\n";
 
 # Build desk
-my $build = Concierge::Setup::build_quick_desk(
+my $build = Concierge::Desk::Setup::build_quick_desk(
     $test_dir,
     ['preferences', 'theme'],  # app_fields
 );
