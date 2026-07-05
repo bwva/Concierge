@@ -21,7 +21,10 @@ use Concierge::Users;
 # fully-qualified class name and the settings it requires. Adding a
 # new backend (e.g. an LDAP-backed one) is a one-entry addition here;
 # Concierge::Auth itself never guesses or validates any of this --
-# see its POD.
+# see its POD. 'class' need not live under the Concierge:: namespace
+# -- Concierge::Auth's factory just require()s it and calls its new()
+# (see its POD); any installed module implementing the 5-verb contract
+# works, e.g. a company-internal SSO wrapper.
 my %AUTH_BACKENDS = (
     pwd => {
         class    => 'Concierge::Auth::Pwd',
@@ -30,6 +33,18 @@ my %AUTH_BACKENDS = (
     # ldap => {
     #     class    => 'Concierge::Auth::LDAP',
     #     required => [qw/host bind_dn password/],
+    # },
+    # oauth => {
+    #     class    => 'Concierge::Auth::OAuth',
+    #     required => [qw/client_id client_secret redirect_uri/],
+    # },
+    # saml => {
+    #     class    => 'Concierge::Auth::SAML',
+    #     required => [qw/idp_metadata_url entity_id/],
+    # },
+    # sso => {
+    #     class    => 'MyApp::Auth::SSO',  # outside Concierge:: -- fine, see note above
+    #     required => [qw/provider_url/],
     # },
 );
 
@@ -451,11 +466,14 @@ settings that backend requires (C<'pwd'> requires C<file>, which
 itself falls back to C<base_dir/auth.pwd> if omitted -- so in practice
 C<auth.file> rarely needs to be given explicitly, even though the
 catalog lists it as required). Adding support for another backend
-(e.g. a hypothetical C<Concierge::Auth::LDAP>) is a one-entry addition
-to this module's internal C<%AUTH_BACKENDS> catalog, mapping a new
-friendly name to its class and required settings (e.g. C<host>,
-C<bind_dn>, C<password>); C<build_desk()> and
-C<validate_setup_config()> then handle it automatically.
+(e.g. hypothetical C<Concierge::Auth::LDAP>, C<::OAuth>, or C<::SAML>
+entries) is a one-entry addition to this module's internal
+C<%AUTH_BACKENDS> catalog, mapping a new friendly name to its class and
+required settings (e.g. C<host>, C<bind_dn>, C<password>);
+C<build_desk()> and C<validate_setup_config()> then handle it
+automatically. C<class> is not required to live under the
+C<Concierge::> namespace -- any installed module implementing the
+5-verb contract works (see L<Concierge::Auth>'s POD).
 
 The C<users> block is where field configuration happens.  The sections
 below describe the available fields and show how to customize them.
