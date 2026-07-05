@@ -1,5 +1,32 @@
 Revision history for Concierge
 
+v0.9.0  2026-07-05
+    - BREAKING: Auth backend is now selected via a friendly name resolved
+      through Desk::Setup's %AUTH_BACKENDS catalog, matching the 5-verb
+      contract introduced in Concierge::Auth v0.5.0. Desks built before
+      this change (bare auth_file, no auth_backend/auth_args in
+      concierge.conf) will fail loudly at open_desk() -- there is no
+      migration path or fallback; affected desks must be rebuilt via
+      build_desk()/build_quick_desk(). Requires Concierge::Auth >= 0.5.0
+      (bumped in PREREQ_PM); running against an older Concierge::Auth
+      will fail outright since it no longer has the backend factory.
+    - Desk::Setup: added %AUTH_BACKENDS catalog (currently 'pwd' ->
+      Concierge::Auth::Pwd); build_desk() and validate_setup_config()
+      resolve/validate auth.backend through it. Documented (POD +
+      commented-out catalog entries) that additional backends -- e.g.
+      OAuth, SAML, or a non-Concierge::-namespaced class -- can be added
+      as one-entry additions; the backend class is not required to live
+      under the Concierge:: namespace.
+    - Concierge.pm: six call sites (add_user, remove_user, verify_user,
+      login_user, verify_password, reset_password) converted from the
+      old Auth primitives to the new authenticate/is_id_known/enroll/
+      change_credentials/revoke verbs.
+    - Fixed three call sites (admit_visitor, checkin_guest,
+      Desk::User::enable_user) that called Concierge::Auth as a class
+      method for ID generation -- broken outright under the new factory,
+      which has no class methods; now call the configured backend
+      instance or Concierge::Auth::Generators directly.
+
 v0.8.4  2026-06-05
     - Desk::Setup POD: add UI Formatting Hints section documenting format_as
       with template example using app-native tokens (t/b/sel)
