@@ -29,7 +29,7 @@ subtest 'open_desk initializes components' => sub {
     my $result = Concierge->open_desk($test_dir);
     my $concierge = $result->{concierge};
 
-    isa_ok $concierge->auth, ['Concierge::Auth'], 'auth component initialized';
+    isa_ok $concierge->auth, ['Concierge::Auth::Pwd'], 'auth component initialized';
     isa_ok $concierge->sessions, ['Concierge::Sessions'], 'sessions component initialized';
     isa_ok $concierge->users, ['Concierge::Users'], 'users component initialized';
 };

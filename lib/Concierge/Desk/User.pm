@@ -9,7 +9,7 @@ use File::Spec;
 use File::Path qw/make_path/;
 
 # === COMPONENT MODULES ===
-use Concierge::Auth;
+use Concierge::Auth::Generators qw(gen_random_string);
 use Concierge::Sessions;
 use Concierge::Users;
 
@@ -27,7 +27,7 @@ sub enable_user {
 
     my $self = bless {
         user_id  => $user_id,
-        user_key => $options->{user_key} || scalar(Concierge::Auth->gen_random_string(13)),
+        user_key => $options->{user_key} || scalar(gen_random_string(13)),
     }, $class;
 
     # Store session reference and ID if provided

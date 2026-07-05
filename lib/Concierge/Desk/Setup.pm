@@ -16,6 +16,23 @@ use Concierge::Auth;
 use Concierge::Sessions;
 use Concierge::Users;
 
+# === AUTH BACKEND CATALOG ===
+# Maps a friendly auth.backend name (as given in setup config) to its
+# fully-qualified class name and the settings it requires. Adding a
+# new backend (e.g. an LDAP-backed one) is a one-entry addition here;
+# Concierge::Auth itself never guesses or validates any of this --
+# see its POD.
+my %AUTH_BACKENDS = (
+    pwd => {
+        class    => 'Concierge::Auth::Pwd',
+        required => [qw/file/],
+    },
+    # ldap => {
+    #     class    => 'Concierge::Auth::LDAP',
+    #     required => [qw/host bind_dn password/],
+    # },
+);
+
 # =============================================================================
 # SIMPLE SETUP - Opinionated defaults for quick start
 # =============================================================================
@@ -49,11 +66,18 @@ sub build_quick_desk ($storage_dir, $app_fields=[]) {
         storage_dir => $storage_dir,  # Uses database backend (SQLite) by default
     );
 
-    # Initialize Auth component
-    my $auth_file	= File::Spec->catfile($storage_dir, 'auth.pwd');
-    $concierge->{auth} = Concierge::Auth->new({
-        file => $auth_file
-    });
+    # Initialize Auth component -- build_quick_desk is fully opinionated
+    # (like its fixed 'database' choice for Sessions/Users), so the
+    # resolved class name is hardcoded here rather than going through
+    # the catalog/validation path used by build_desk().
+    my $auth_file    = File::Spec->catfile($storage_dir, 'auth.pwd');
+    my $auth_backend = 'Concierge::Auth::Pwd';
+    my $auth_args    = { file => $auth_file };
+    unlink $auth_file if -f $auth_file;
+    $concierge->{auth} = Concierge::Auth->new(
+        backend => $auth_backend,
+        %$auth_args,
+    );
 
     # Setup Users component
     my $users_setup = Concierge::Users->setup({
@@ -76,7 +100,8 @@ sub build_quick_desk ($storage_dir, $app_fields=[]) {
         storage_dir         => $storage_dir,
         sessions_dir        => $storage_dir,
         users_dir           => $storage_dir,
-        auth_file           => $auth_file,
+        auth_backend        => $auth_backend,
+        auth_args           => $auth_args,
         sessions_backend    => 'database',
         users_backend       => 'database',
     };
@@ -128,7 +153,32 @@ sub build_desk ($config) {
     # Determine storage locations (support separate dirs or single base_dir)
     my $sessions_dir	= $config->{storage}{sessions_dir} || $base_dir;
     my $users_dir		= $config->{storage}{users_dir} || $base_dir;
-    my $auth_file		= $config->{auth}{file} || File::Spec->catfile($base_dir, 'auth.pwd');
+
+    # Resolve the auth backend: config gives a friendly name (e.g.
+    # 'pwd'); the catalog maps it to a fully-qualified class name and
+    # the settings that backend requires. No default -- unlike
+    # build_quick_desk(), this path is not opinionated about backend
+    # choice.
+    my $auth_backend_name = $config->{auth}{backend}
+        or return { success => 0, message => 'Missing auth.backend' };
+    my $auth_spec = $AUTH_BACKENDS{lc $auth_backend_name}
+        or return { success => 0, message => "Unknown auth.backend: $auth_backend_name" };
+
+    # file has a computed default here as a build-time convenience;
+    # this does not mean Concierge::Auth itself has a fallback -- it
+    # never guesses at runtime (see Concierge::Auth POD).
+    my $auth_file = $config->{auth}{file} || File::Spec->catfile($base_dir, 'auth.pwd');
+
+    # Validate every setting the chosen backend requires, failing the
+    # build now rather than deferring to a runtime error later.
+    my %auth_args = ( file => $auth_file );  # today's only 'pwd' setting;
+                                              # a future backend's required
+                                              # keys would be read from
+                                              # $config->{auth}{$key} here instead
+    for my $key (@{ $auth_spec->{required} }) {
+        return { success => 0, message => "Missing auth.$key required for backend '$auth_backend_name'" }
+            unless defined $auth_args{$key} && length $auth_args{$key};
+    }
 
     # Create directories if needed
     for my $dir ($base_dir, $sessions_dir, $users_dir) {
@@ -151,9 +201,11 @@ sub build_desk ($config) {
     );
 
     # Initialize Auth component
-    $concierge->{auth} = Concierge::Auth->new({
-        file => $auth_file
-    });
+    unlink $auth_file if -f $auth_file;
+    $concierge->{auth} = Concierge::Auth->new(
+        backend => $auth_spec->{class},
+        %auth_args,
+    );
 
     # Build Users setup configuration
     my $users_config = {
@@ -186,7 +238,8 @@ sub build_desk ($config) {
         storage_dir         => $base_dir,
         sessions_dir        => $sessions_dir,
         users_dir           => $users_dir,
-        auth_file           => $auth_file,
+        auth_backend        => $auth_spec->{class},
+        auth_args           => \%auth_args,
         sessions_backend    => $sessions_backend,
         users_backend       => $users_config->{backend},
     };
@@ -223,8 +276,8 @@ sub validate_setup_config ($config) {
     push @errors, "Missing storage.base_dir"
         unless $config->{storage} && $config->{storage}{base_dir};
 
-    push @errors, "Missing auth.file"
-        unless $config->{auth} && $config->{auth}{file};
+    push @errors, "Missing auth.backend"
+        unless $config->{auth} && $config->{auth}{backend};
 
     push @errors, "Missing sessions.backend"
         unless $config->{sessions} && $config->{sessions}{backend};
@@ -233,6 +286,18 @@ sub validate_setup_config ($config) {
         unless $config->{users} && $config->{users}{backend};
 
     # Validate backend values
+    if ($config->{auth}{backend}) {
+        my $spec = $AUTH_BACKENDS{lc $config->{auth}{backend}};
+        if (!$spec) {
+            push @errors, "Invalid auth.backend: '$config->{auth}{backend}'";
+        } else {
+            for my $key (@{ $spec->{required} }) {
+                push @errors, "Missing auth.$key required for backend '$config->{auth}{backend}'"
+                    unless defined $config->{auth}{$key} && length $config->{auth}{$key};
+            }
+        }
+    }
+
     if ($config->{sessions}{backend}) {
         my $backend = lc $config->{sessions}{backend};
         push @errors, "Invalid sessions.backend: must be 'database' or 'file'"
@@ -281,7 +346,8 @@ v0.8.4
             users_dir    => './desk/users',
         },
         auth => {
-            file => './desk/auth.pwd',
+            backend => 'pwd',
+            file    => './desk/auth.pwd',
         },
         sessions => {
             backend => 'database',  # or 'file'
@@ -362,7 +428,8 @@ B<Configuration structure:>
             users_dir    => $path,       # default: base_dir
         },
         auth => {
-            file => $path,               # default: base_dir/auth.pwd
+            backend => 'pwd',            # required, no default -- see below
+            file    => $path,            # default: base_dir/auth.pwd
         },
         sessions => {
             backend => 'database',       # 'database' or 'file'
@@ -374,6 +441,21 @@ B<Configuration structure:>
             field_overrides         => \@overrides,  # modify built-in fields
         },
     }
+
+C<auth.backend> is a friendly name (currently only C<'pwd'> is built
+in) resolved via an internal backend catalog to a fully-qualified
+class -- C<'pwd'> resolves to L<Concierge::Auth::Pwd>. Unlike
+C<sessions.backend>/C<users.backend>, C<auth.backend> has no default;
+it must be specified explicitly. Each catalog entry also lists the
+settings that backend requires (C<'pwd'> requires C<file>, which
+itself falls back to C<base_dir/auth.pwd> if omitted -- so in practice
+C<auth.file> rarely needs to be given explicitly, even though the
+catalog lists it as required). Adding support for another backend
+(e.g. a hypothetical C<Concierge::Auth::LDAP>) is a one-entry addition
+to this module's internal C<%AUTH_BACKENDS> catalog, mapping a new
+friendly name to its class and required settings (e.g. C<host>,
+C<bind_dn>, C<password>); C<build_desk()> and
+C<validate_setup_config()> then handle it automatically.
 
 The C<users> block is where field configuration happens.  The sections
 below describe the available fields and show how to customize them.

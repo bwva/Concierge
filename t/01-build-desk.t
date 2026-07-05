@@ -68,6 +68,7 @@ subtest 'build_desk basic database backend' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database', include_standard_fields => [] },
     });
@@ -85,6 +86,7 @@ subtest 'build_desk with file sessions backend' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'file' },
         users    => { backend  => 'database', include_standard_fields => [] },
     });
@@ -98,6 +100,7 @@ subtest 'build_desk with yaml users backend' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'yaml', include_standard_fields => [] },
     });
@@ -111,6 +114,7 @@ subtest 'build_desk with file users backend' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'file', include_standard_fields => [] },
     });
@@ -129,6 +133,7 @@ subtest 'build_desk with separate storage directories' => sub {
             sessions_dir => $sessions_dir,
             users_dir    => $users_dir,
         },
+        auth     => { backend => 'pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
     });
@@ -146,13 +151,13 @@ subtest 'build_desk with custom auth file path' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $base_dir },
-        auth     => { file => $auth_file },
+        auth     => { backend => 'pwd', file => $auth_file },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
     });
 
     ok $result->{success}, 'build_desk with custom auth file succeeds';
-    is $result->{config}{auth_file}, $auth_file, 'custom auth_file in config';
+    is $result->{config}{auth_args}{file}, $auth_file, 'custom auth file in config';
 };
 
 subtest 'build_desk with field configuration' => sub {
@@ -160,6 +165,7 @@ subtest 'build_desk with field configuration' => sub {
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => {
             backend                 => 'database',
@@ -207,6 +213,7 @@ subtest 'build_desk can be opened' => sub {
 
     my $build = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $desk_dir },
+        auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => {
             backend                 => 'database',
@@ -228,7 +235,7 @@ subtest 'build_desk can be opened' => sub {
 subtest 'validate_setup_config accepts valid configuration' => sub {
     my $config = {
         storage  => { base_dir => '/some/path' },
-        auth     => { file     => '/some/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/some/path/auth.pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
     };
@@ -241,7 +248,7 @@ subtest 'validate_setup_config accepts valid configuration' => sub {
 subtest 'validate_setup_config with file backends' => sub {
     my $config = {
         storage  => { base_dir => '/some/path' },
-        auth     => { file     => '/some/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/some/path/auth.pwd' },
         sessions => { backend  => 'file' },
         users    => { backend  => 'yaml' },
     };
@@ -259,25 +266,46 @@ subtest 'validate_setup_config detects missing required fields' => sub {
     # Missing storage.base_dir only
     my $r2 = Concierge::Desk::Setup::validate_setup_config({
         storage  => {},
-        auth     => { file    => '/path/auth.pwd' },
+        auth     => { backend => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database' },
     });
     ok !$r2->{success}, 'fails when storage.base_dir missing';
     like $r2->{errors}[0], qr/storage\.base_dir/i, 'error mentions storage.base_dir';
 
-    # Missing auth.file only
+    # Missing auth.backend only
     my $r3 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
     });
-    ok !$r3->{success}, 'fails when auth.file missing';
+    ok !$r3->{success}, 'fails when auth.backend missing';
+    like $r3->{errors}[0], qr/auth\.backend/i, 'error mentions auth.backend';
+
+    # auth.backend given but unknown
+    my $r3b = Concierge::Desk::Setup::validate_setup_config({
+        storage  => { base_dir => '/path' },
+        auth     => { backend  => 'nosuchbackend' },
+        sessions => { backend  => 'database' },
+        users    => { backend  => 'database' },
+    });
+    ok !$r3b->{success}, 'fails when auth.backend is unknown';
+    like $r3b->{errors}[0], qr/Invalid auth\.backend/i, 'error mentions invalid auth.backend';
+
+    # auth.backend known but missing its required setting (file)
+    my $r3c = Concierge::Desk::Setup::validate_setup_config({
+        storage  => { base_dir => '/path' },
+        auth     => { backend  => 'pwd' },
+        sessions => { backend  => 'database' },
+        users    => { backend  => 'database' },
+    });
+    ok !$r3c->{success}, 'fails when auth.file missing for pwd backend';
+    like $r3c->{errors}[0], qr/Missing auth\.file/i, 'error mentions missing auth.file';
 
     # Missing sessions.backend only
     my $r4 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
-        auth     => { file     => '/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         users    => { backend  => 'database' },
     });
     ok !$r4->{success}, 'fails when sessions.backend missing';
@@ -285,7 +313,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
     # Missing users.backend only
     my $r5 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
-        auth     => { file     => '/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'database' },
     });
     ok !$r5->{success}, 'fails when users.backend missing';
@@ -295,7 +323,7 @@ subtest 'validate_setup_config rejects invalid backend values' => sub {
     # Invalid sessions backend
     my $r1 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
-        auth     => { file     => '/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'redis' },
         users    => { backend  => 'database' },
     });
@@ -305,7 +333,7 @@ subtest 'validate_setup_config rejects invalid backend values' => sub {
     # Invalid users backend
     my $r2 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
-        auth     => { file     => '/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'oracle' },
     });
@@ -315,7 +343,7 @@ subtest 'validate_setup_config rejects invalid backend values' => sub {
     # Both backends invalid - should have 2 errors
     my $r3 = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
-        auth     => { file     => '/path/auth.pwd' },
+        auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'bad' },
         users    => { backend  => 'also_bad' },
     });
