@@ -137,10 +137,27 @@ sub open_desk ($class, $desk_location) {
 	
 	# Instantiate users and auth from $concierge_config
 	$concierge->{users}	= Concierge::Users->new( $concierge_config->{users_config_file} );
-	$concierge->{auth}	= Concierge::Auth->new(
-		backend	=> $concierge_config->{auth_backend},
-		%{ $concierge_config->{auth_args} || {} },
-	);
+
+	unless ($concierge_config->{auth_backend}) {
+		return { success => 0, message =>
+			"This desk must be built again to work with v0.5+ of Concierge::Auth, "
+			. "now shipping with Concierge v0.9+. Building the desk with the same "
+			. "original configuration will archive existing user data, but delete "
+			. "session and any credential storage, and will automatically install "
+			. "the default built-in ID-password authentication system. See the "
+			. "POD for how to use an alternative approach to user authentication."
+		};
+	}
+
+	my $auth;
+	eval {
+		$auth = Concierge::Auth->new(
+			backend	=> $concierge_config->{auth_backend},
+			%{ $concierge_config->{auth_args} || {} },
+		);
+	};
+	return { success => 0, message => "Failed to initialize auth backend: $@" } if $@;
+	$concierge->{auth} = $auth;
 
 	return { success => 1, message => 'Welcome!', concierge => $concierge };
 }

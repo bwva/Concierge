@@ -5,11 +5,22 @@ v0.9.0  2026-07-05
       through Desk::Setup's %AUTH_BACKENDS catalog, matching the 5-verb
       contract introduced in Concierge::Auth v0.5.0. Desks built before
       this change (bare auth_file, no auth_backend/auth_args in
-      concierge.conf) will fail loudly at open_desk() -- there is no
-      migration path or fallback; affected desks must be rebuilt via
+      concierge.conf) will fail at open_desk() -- there is no migration
+      path or fallback; affected desks must be rebuilt via
       build_desk()/build_quick_desk(). Requires Concierge::Auth >= 0.5.0
       (bumped in PREREQ_PM); running against an older Concierge::Auth
       will fail outright since it no longer has the backend factory.
+    - open_desk(): instantiating the configured Auth backend is now
+      wrapped so failures return gracefully instead of croaking. A
+      pre-v0.5 desk (missing auth_backend) gets a specific
+      { success => 0, message => '...' } explaining that the desk must
+      be rebuilt, that rebuilding will archive existing user data but
+      delete session/credential storage and install the default
+      built-in ID-password auth system, and pointing at the POD for
+      alternative auth approaches. Any other backend init failure (bad
+      backend name, backend constructor error) returns a generic
+      wrapped { success => 0, message => "Failed to initialize auth
+      backend: ..." } instead of propagating the croak.
     - Desk::Setup: added %AUTH_BACKENDS catalog (currently 'pwd' ->
       Concierge::Auth::Pwd); build_desk() and validate_setup_config()
       resolve/validate auth.backend through it. Documented (POD +

@@ -228,7 +228,8 @@ component, add a key for it in that file:
     {
         "sessions_dir": "/path/to/desk",
         "users_config_file": "/path/to/desk/users.conf",
-        "auth_file": "/path/to/desk/auth.json",
+        "auth_backend": "pwd",
+        "auth_args": { "file": "/path/to/desk/auth.pwd" },
         "organizations_config": {
             "backend": "sqlite",
             "db_file": "/path/to/desk/orgs.db"
