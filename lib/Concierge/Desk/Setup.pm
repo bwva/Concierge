@@ -51,6 +51,17 @@ my %AUTH_BACKENDS = (
     # },
 );
 
+# Resolve a component's storage directory against base_dir: a relative
+# $dir is joined onto $base_dir (so it moves if base_dir does); an
+# absolute $dir is used as-is (letting a component's storage live
+# anywhere, including outside the desk entirely); an undefined $dir
+# falls back to $base_dir itself.
+sub _resolve_dir ($dir, $base_dir) {
+    return $base_dir unless defined $dir;
+    return $dir if File::Spec->file_name_is_absolute($dir);
+    return File::Spec->catdir($base_dir, $dir);
+}
+
 # =============================================================================
 # SIMPLE SETUP - Opinionated defaults for quick start
 # =============================================================================
@@ -168,10 +179,15 @@ sub build_desk ($config) {
         $config->{storage}{base_dir} = $base_dir;
     }
 
-    # Determine storage locations (support separate dirs or single base_dir)
-    my $sessions_dir	= $config->{storage}{sessions_dir} || $base_dir;
-    my $users_dir		= $config->{storage}{users_dir} || $base_dir;
-    my $auth_dir		= $config->{storage}{auth_dir} || $base_dir;
+    # Determine storage locations. Each component may specify its own
+    # 'dir' (falls back to base_dir if omitted). A relative dir is
+    # resolved against base_dir, so it moves with it; an absolute dir
+    # is used as-is, letting a component's storage live entirely
+    # outside the desk (e.g. for security) without tying that
+    # placement to how the rest of the desk is laid out.
+    my $sessions_dir	= _resolve_dir($config->{sessions}{dir}, $base_dir);
+    my $users_dir		= _resolve_dir($config->{users}{dir}, $base_dir);
+    my $auth_dir		= _resolve_dir($config->{auth}{dir}, $base_dir);
 
     # Resolve the auth backend: config gives a friendly name (e.g.
     # 'pwd'); the catalog maps it to a fully-qualified class name and
@@ -184,10 +200,10 @@ sub build_desk ($config) {
         or return { success => 0, message => "Unknown auth.backend: $auth_backend_name" };
 
     # auth.file is a filename only (not a path) -- where it lives is a
-    # separate concern controlled by storage.auth_dir (falls back to
-    # base_dir, same as sessions_dir/users_dir). This lets the auth
-    # store be located anywhere, including outside the rest of the
-    # desk's storage for security, without tying that placement to
+    # separate concern controlled by auth.dir (falls back to base_dir,
+    # same as sessions.dir/users.dir). This lets the auth store be
+    # located anywhere, including outside the rest of the desk's
+    # storage for security, without tying that placement to
     # what the file happens to be named. The default filename is
     # backend-specific (only 'pwd' has one, since it's the only
     # backend that needs a file at all); this does not mean
@@ -368,24 +384,46 @@ v0.9.0
     # Advanced setup -- full control over backends and field configuration
     my $result = Concierge::Desk::Setup::build_desk({
         storage => {
-            base_dir     => './desk',
-            sessions_dir => './desk/sessions',
-            users_dir    => './desk/users',
-            auth_dir     => './desk/auth',   # optional; default: base_dir
+            base_dir => './desk',
         },
         auth => {
             backend => 'pwd',
+            dir     => 'auth',               # optional; default: base_dir.
+                                              # Relative to base_dir here
+                                              # ('./desk/auth'); an absolute
+                                              # path would be used as-is.
             file    => 'auth.pwd',           # optional; a filename, not a path
         },
         sessions => {
             backend => 'database',  # or 'file'
+            dir     => 'sessions',           # optional; default: base_dir
         },
         users => {
             backend                 => 'database',  # 'database', 'yaml', or 'file'
+            dir                     => 'users',      # optional; default: base_dir
             include_standard_fields => [qw/email phone first_name last_name/],
             app_fields              => ['membership_tier', 'department'],
             field_overrides         => [{ field_name => 'email', required => 1 }],
         },
+    });
+
+    # storage.base_dir can also be any explicit path, not just './desk' --
+    # the './desk' conversion only kicks in for '.', './', or ''. Each
+    # component's dir still resolves the same way: relative joins onto
+    # whatever base_dir is, absolute escapes it entirely.
+    my $result2 = Concierge::Desk::Setup::build_desk({
+        storage => {
+            base_dir => '/var/lib/myapp/desk',
+        },
+        auth => {
+            backend => 'pwd',
+            dir     => '/Users/Shared/Tests',  # absolute -- lives outside
+                                                # the desk entirely, e.g. for
+                                                # a more restrictively
+                                                # permissioned location
+        },
+        sessions => { backend => 'database' },
+        users    => { backend => 'database', include_standard_fields => [] },
     });
 
 =head1 DESCRIPTION
@@ -451,20 +489,20 @@ B<Configuration structure:>
 
     {
         storage => {
-            base_dir     => $path,       # required
-            sessions_dir => $path,       # default: base_dir
-            users_dir    => $path,       # default: base_dir
-            auth_dir     => $path,       # default: base_dir
+            base_dir => $path,           # required
         },
         auth => {
             backend => 'pwd',            # required, no default -- see below
+            dir     => $path,            # default: base_dir
             file    => $filename,        # default: 'auth.pwd' (backend-specific)
         },
         sessions => {
             backend => 'database',       # 'database' or 'file'
+            dir     => $path,            # default: base_dir
         },
         users => {
             backend                 => 'database',  # 'database', 'yaml', or 'file'
+            dir                     => $path,        # default: base_dir
             include_standard_fields => 'all',        # 'all' or \@field_names
             app_fields              => \@fields,     # custom fields
             field_overrides         => \@overrides,  # modify built-in fields
@@ -477,17 +515,19 @@ class -- C<'pwd'> resolves to L<Concierge::Auth::Pwd>. Unlike
 C<sessions.backend>/C<users.backend>, C<auth.backend> has no default;
 it must be specified explicitly.
 
-C<storage.auth_dir> controls I<where> any backend-specific storage
-(e.g. C<'pwd'>'s password file) lives, the same way C<sessions_dir>/
-C<users_dir> control Sessions/Users storage -- it defaults to
-C<base_dir> but can point anywhere, including outside the rest of the
-desk's storage entirely (e.g. a more restrictively permissioned
-directory), independent of how the rest of the desk is laid out.
+Each component's C<dir> controls I<where> that component's storage
+lives (for C<auth>, e.g. C<'pwd'>'s password file) -- it defaults to
+C<storage.base_dir> but can point anywhere, independent of how the
+rest of the desk is laid out. A relative C<dir> (e.g. C<'auth'> or
+C<'./auth'>) is resolved I<against> C<base_dir>, so it moves along
+with it; an absolute C<dir> (e.g. C<'/Users/Shared/Tests'>) is used
+as-is, letting that component's storage live entirely outside the
+rest of the desk (e.g. a more restrictively permissioned directory).
 C<auth.file>, by contrast, is only ever a I<filename> (never a path)
-naming the file within C<auth_dir> -- for C<'pwd'> it defaults to
-C<auth.pwd>. This mirrors how storage location (C<storage.*_dir>) and
-backend selection/settings (C<auth>, C<sessions>, C<users> blocks) are
-kept as separate concerns throughout this config structure.
+naming the file within C<auth.dir> -- for C<'pwd'> it defaults to
+C<auth.pwd>. This mirrors how storage location (each component's
+C<dir>) and backend selection/settings (C<backend>, C<file>, etc.)
+are kept as separate concerns within each component's own block.
 
 Each catalog entry also lists the settings that backend requires;
 C<'pwd'> has none, since its one setting (C<file>) always resolves via

@@ -124,19 +124,17 @@ subtest 'build_desk with file users backend' => sub {
 };
 
 subtest 'build_desk with separate storage directories' => sub {
+    # Each component's own 'dir' setting controls its storage location;
+    # an absolute dir is used as-is, independent of base_dir.
     my $base_dir     = tempdir(CLEANUP => 1);
     my $sessions_dir = File::Spec->catdir($base_dir, 'sessions');
     my $users_dir    = File::Spec->catdir($base_dir, 'users');
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => {
-            base_dir     => $base_dir,
-            sessions_dir => $sessions_dir,
-            users_dir    => $users_dir,
-        },
+        storage  => { base_dir => $base_dir },
         auth     => { backend => 'pwd' },
-        sessions => { backend => 'database' },
-        users    => { backend => 'database', include_standard_fields => [] },
+        sessions => { backend => 'database', dir => $sessions_dir },
+        users    => { backend => 'database', dir => $users_dir, include_standard_fields => [] },
     });
 
     ok $result->{success}, 'build_desk with separate dirs succeeds';
@@ -146,9 +144,31 @@ subtest 'build_desk with separate storage directories' => sub {
     is $result->{config}{users_dir},    $users_dir,    'users_dir in config';
 };
 
+subtest 'build_desk resolves a relative component dir against base_dir' => sub {
+    my $base_dir = tempdir(CLEANUP => 1);
+
+    my $result = Concierge::Desk::Setup::build_desk({
+        storage  => { base_dir => $base_dir },
+        auth     => { backend => 'pwd' },
+        sessions => { backend => 'database', dir => 'sessions' },
+        users    => { backend => 'database', dir => 'users', include_standard_fields => [] },
+    });
+
+    my $expected_sessions_dir = File::Spec->catdir($base_dir, 'sessions');
+    my $expected_users_dir    = File::Spec->catdir($base_dir, 'users');
+
+    ok $result->{success}, 'build_desk with relative component dirs succeeds';
+    ok -d $expected_sessions_dir, 'relative sessions dir created under base_dir';
+    ok -d $expected_users_dir,    'relative users dir created under base_dir';
+    is $result->{config}{sessions_dir}, $expected_sessions_dir,
+        'relative sessions.dir resolved against base_dir';
+    is $result->{config}{users_dir}, $expected_users_dir,
+        'relative users.dir resolved against base_dir';
+};
+
 subtest 'build_desk with custom auth filename' => sub {
     # auth.file is a filename only (not a path); it resolves under
-    # storage.auth_dir (or base_dir if auth_dir is not given).
+    # auth.dir (or base_dir if dir is not given).
     my $base_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
@@ -164,33 +184,56 @@ subtest 'build_desk with custom auth filename' => sub {
         'custom auth filename resolved under base_dir';
 };
 
-subtest 'build_desk with custom storage.auth_dir' => sub {
-    # storage.auth_dir lets the auth store live anywhere, independent
-    # of base_dir -- same pattern as sessions_dir/users_dir.
+subtest 'build_desk with custom auth.dir (absolute)' => sub {
+    # auth.dir lets the auth store live anywhere, independent of
+    # base_dir -- same pattern as sessions.dir/users.dir. An absolute
+    # dir is used as-is.
     my $base_dir = tempdir(CLEANUP => 1);
-    my $auth_dir = File::Spec->catdir($base_dir, 'secure-auth');
+    my $auth_dir = File::Spec->catdir(tempdir(CLEANUP => 1), 'secure-auth');
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir, auth_dir => $auth_dir },
-        auth     => { backend => 'pwd' },
+        storage  => { base_dir => $base_dir },
+        auth     => { backend => 'pwd', dir => $auth_dir },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
     });
 
-    ok $result->{success}, 'build_desk with custom auth_dir succeeds';
+    ok $result->{success}, 'build_desk with custom auth.dir succeeds';
     ok -d $auth_dir, 'auth_dir created';
+    ok !-f File::Spec->catfile($base_dir, 'auth.pwd'), 'auth.pwd does NOT land in base_dir';
     is $result->{config}{auth_dir}, $auth_dir, 'auth_dir recorded in config';
     is $result->{config}{auth_args}{file},
         File::Spec->catfile($auth_dir, 'auth.pwd'),
-        'default auth filename resolved under custom auth_dir';
+        'default auth filename resolved under custom auth_dir, outside base_dir';
+};
+
+subtest 'build_desk resolves a relative auth.dir against base_dir' => sub {
+    my $base_dir = tempdir(CLEANUP => 1);
+
+    my $result = Concierge::Desk::Setup::build_desk({
+        storage  => { base_dir => $base_dir },
+        auth     => { backend => 'pwd', dir => 'secure-auth' },
+        sessions => { backend => 'database' },
+        users    => { backend => 'database', include_standard_fields => [] },
+    });
+
+    my $expected_auth_dir = File::Spec->catdir($base_dir, 'secure-auth');
+
+    ok $result->{success}, 'build_desk with relative auth.dir succeeds';
+    ok -d $expected_auth_dir, 'relative auth.dir created under base_dir';
+    is $result->{config}{auth_dir}, $expected_auth_dir,
+        'relative auth.dir resolved against base_dir';
+    is $result->{config}{auth_args}{file},
+        File::Spec->catfile($expected_auth_dir, 'auth.pwd'),
+        'auth filename resolved under the relative auth.dir';
 };
 
 subtest 'build_desk normalizes base_dir "." consistently for the auth file' => sub {
     # Regression test: an explicit auth.file relative to '.' used to
     # land outside the normalized './desk' directory once base_dir
     # '.'/'./ ' was rewritten. Location is now controlled solely by
-    # storage.auth_dir (falling back to the *normalized* base_dir), so
-    # the auth file always ends up alongside sessions/users storage.
+    # auth.dir (falling back to the *normalized* base_dir), so the
+    # auth file always ends up alongside sessions/users storage.
     my $orig_cwd = getcwd();
     my $temp_dir = tempdir(CLEANUP => 1);
     chdir $temp_dir or die "Cannot chdir to $temp_dir: $!";
