@@ -169,14 +169,14 @@ sub build_desk ($config) {
     return { success => 0, message => 'Configuration must be a hash reference' }
         unless ref $config eq 'HASH';
 
-    return { success => 0, message => 'Missing storage.base_dir' }
-        unless $config->{storage} && $config->{storage}{base_dir};
+    return { success => 0, message => 'Missing base_dir' }
+        unless $config->{base_dir};
 
     # Safety: Convert '.' or empty string to './desk' to avoid cluttering app root
-    my $base_dir = $config->{storage}{base_dir};
+    my $base_dir = $config->{base_dir};
     if (!$base_dir || $base_dir eq '.' || $base_dir eq './') {
         $base_dir = './desk';
-        $config->{storage}{base_dir} = $base_dir;
+        $config->{base_dir} = $base_dir;
     }
 
     # Determine storage locations. Each component may specify its own
@@ -316,8 +316,8 @@ sub validate_setup_config ($config) {
     my @errors;
 
     # Check required fields
-    push @errors, "Missing storage.base_dir"
-        unless $config->{storage} && $config->{storage}{base_dir};
+    push @errors, "Missing base_dir"
+        unless $config->{base_dir};
 
     push @errors, "Missing auth.backend"
         unless $config->{auth} && $config->{auth}{backend};
@@ -383,9 +383,7 @@ v0.9.0
 
     # Advanced setup -- full control over backends and field configuration
     my $result = Concierge::Desk::Setup::build_desk({
-        storage => {
-            base_dir => './desk',
-        },
+        base_dir => './desk',
         auth => {
             backend => 'pwd',
             dir     => 'auth',               # optional; default: base_dir.
@@ -407,14 +405,12 @@ v0.9.0
         },
     });
 
-    # storage.base_dir can also be any explicit path, not just './desk' --
-    # the './desk' conversion only kicks in for '.', './', or ''. Each
+    # base_dir can also be any explicit path, not just './desk' -- the
+    # './desk' conversion only kicks in for '.', './', or ''. Each
     # component's dir still resolves the same way: relative joins onto
     # whatever base_dir is, absolute escapes it entirely.
     my $result2 = Concierge::Desk::Setup::build_desk({
-        storage => {
-            base_dir => '/var/lib/myapp/desk',
-        },
+        base_dir => '/var/lib/myapp/desk',
         auth => {
             backend => 'pwd',
             dir     => '/Users/Shared/Tests',  # absolute -- lives outside
@@ -435,11 +431,14 @@ files for the identity core components (Auth, Sessions, Users).
 Setup is separate from runtime operations.  Use this module once to
 create a desk, then use L<Concierge/open_desk> at runtime.
 
-The configuration structure passed to C<build_desk()> is organized by
-component (C<auth>, C<sessions>, C<users>).  Applications that
-introduce additional components under the C<Concierge::> namespace can
-extend this structure with their own configuration blocks, following
-the same pattern.  See L<Concierge/Architecture> for details.
+The configuration structure passed to C<build_desk()> has one
+top-level setting, C<base_dir> (the desk-wide storage root), plus a
+block per component (C<auth>, C<sessions>, C<users>) for backend
+selection and settings, including each component's own storage
+location (C<dir>).  Applications that introduce additional components
+under the C<Concierge::> namespace can extend this structure with
+their own configuration blocks, following the same pattern.  See
+L<Concierge/Architecture> for details.
 
 =head2 The ./desk Convention
 
@@ -488,9 +487,7 @@ and user field configuration.
 B<Configuration structure:>
 
     {
-        storage => {
-            base_dir => $path,           # required
-        },
+        base_dir => $path,               # required; desk-wide storage root
         auth => {
             backend => 'pwd',            # required, no default -- see below
             dir     => $path,            # default: base_dir
@@ -517,8 +514,8 @@ it must be specified explicitly.
 
 Each component's C<dir> controls I<where> that component's storage
 lives (for C<auth>, e.g. C<'pwd'>'s password file) -- it defaults to
-C<storage.base_dir> but can point anywhere, independent of how the
-rest of the desk is laid out. A relative C<dir> (e.g. C<'auth'> or
+the top-level C<base_dir> but can point anywhere, independent of how
+the rest of the desk is laid out. A relative C<dir> (e.g. C<'auth'> or
 C<'./auth'>) is resolved I<against> C<base_dir>, so it moves along
 with it; an absolute C<dir> (e.g. C<'/Users/Shared/Tests'>) is used
 as-is, letting that component's storage live entirely outside the
@@ -847,9 +844,8 @@ A community makerspace tracking members with custom fields, selective
 standard fields, and modified built-in defaults:
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage => {
-            base_dir => './makerspace-desk',
-        },
+        base_dir => './makerspace-desk',
+        auth     => { backend => 'pwd' },
         sessions => { backend => 'database' },
         users => {
             backend                 => 'database',

@@ -68,7 +68,7 @@ subtest 'build_desk basic database backend' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database', include_standard_fields => [] },
@@ -86,7 +86,7 @@ subtest 'build_desk with file sessions backend' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'file' },
         users    => { backend  => 'database', include_standard_fields => [] },
@@ -100,7 +100,7 @@ subtest 'build_desk with yaml users backend' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'yaml', include_standard_fields => [] },
@@ -114,7 +114,7 @@ subtest 'build_desk with file users backend' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'file', include_standard_fields => [] },
@@ -131,7 +131,7 @@ subtest 'build_desk with separate storage directories' => sub {
     my $users_dir    = File::Spec->catdir($base_dir, 'users');
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir },
+        base_dir => $base_dir,
         auth     => { backend => 'pwd' },
         sessions => { backend => 'database', dir => $sessions_dir },
         users    => { backend => 'database', dir => $users_dir, include_standard_fields => [] },
@@ -148,7 +148,7 @@ subtest 'build_desk resolves a relative component dir against base_dir' => sub {
     my $base_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir },
+        base_dir => $base_dir,
         auth     => { backend => 'pwd' },
         sessions => { backend => 'database', dir => 'sessions' },
         users    => { backend => 'database', dir => 'users', include_standard_fields => [] },
@@ -172,7 +172,7 @@ subtest 'build_desk with custom auth filename' => sub {
     my $base_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir },
+        base_dir => $base_dir,
         auth     => { backend => 'pwd', file => 'passwords.pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
@@ -192,7 +192,7 @@ subtest 'build_desk with custom auth.dir (absolute)' => sub {
     my $auth_dir = File::Spec->catdir(tempdir(CLEANUP => 1), 'secure-auth');
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir },
+        base_dir => $base_dir,
         auth     => { backend => 'pwd', dir => $auth_dir },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
@@ -211,7 +211,7 @@ subtest 'build_desk resolves a relative auth.dir against base_dir' => sub {
     my $base_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $base_dir },
+        base_dir => $base_dir,
         auth     => { backend => 'pwd', dir => 'secure-auth' },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
@@ -239,7 +239,7 @@ subtest 'build_desk normalizes base_dir "." consistently for the auth file' => s
     chdir $temp_dir or die "Cannot chdir to $temp_dir: $!";
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => '.' },
+        base_dir => '.',
         auth     => { backend => 'pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
@@ -259,7 +259,7 @@ subtest 'build_desk with field configuration' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $result = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => {
@@ -293,21 +293,21 @@ subtest 'build_desk error cases' => sub {
     ok !$r1->{success}, 'fails when config is not a hashref';
     like $r1->{message}, qr/hash reference/i, 'error mentions hash reference';
 
-    # Missing storage.base_dir
+    # Missing base_dir
     my $r2 = Concierge::Desk::Setup::build_desk({});
-    ok !$r2->{success}, 'fails when storage.base_dir missing';
-    like $r2->{message}, qr/storage\.base_dir/i, 'error mentions storage.base_dir';
+    ok !$r2->{success}, 'fails when base_dir missing';
+    like $r2->{message}, qr/base_dir/i, 'error mentions base_dir';
 
-    # Missing storage entirely
+    # Missing base_dir, other keys present
     my $r3 = Concierge::Desk::Setup::build_desk({ sessions => { backend => 'database' } });
-    ok !$r3->{success}, 'fails when storage key missing';
+    ok !$r3->{success}, 'fails when base_dir missing even if other keys are present';
 };
 
 subtest 'build_desk can be opened' => sub {
     my $desk_dir = tempdir(CLEANUP => 1);
 
     my $build = Concierge::Desk::Setup::build_desk({
-        storage  => { base_dir => $desk_dir },
+        base_dir => $desk_dir,
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => {
@@ -329,7 +329,7 @@ subtest 'build_desk can be opened' => sub {
 
 subtest 'validate_setup_config accepts valid configuration' => sub {
     my $config = {
-        storage  => { base_dir => '/some/path' },
+        base_dir => '/some/path',
         auth     => { backend  => 'pwd', file => '/some/path/auth.pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
@@ -342,7 +342,7 @@ subtest 'validate_setup_config accepts valid configuration' => sub {
 
 subtest 'validate_setup_config with file backends' => sub {
     my $config = {
-        storage  => { base_dir => '/some/path' },
+        base_dir => '/some/path',
         auth     => { backend  => 'pwd', file => '/some/path/auth.pwd' },
         sessions => { backend  => 'file' },
         users    => { backend  => 'yaml' },
@@ -358,19 +358,18 @@ subtest 'validate_setup_config detects missing required fields' => sub {
     ok $r1->{errors},   'has errors array';
     ok scalar(@{$r1->{errors}}) >= 4, 'at least 4 errors for empty config';
 
-    # Missing storage.base_dir only
+    # Missing base_dir only
     my $r2 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => {},
         auth     => { backend => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database' },
     });
-    ok !$r2->{success}, 'fails when storage.base_dir missing';
-    like $r2->{errors}[0], qr/storage\.base_dir/i, 'error mentions storage.base_dir';
+    ok !$r2->{success}, 'fails when base_dir missing';
+    like $r2->{errors}[0], qr/base_dir/i, 'error mentions base_dir';
 
     # Missing auth.backend only
     my $r3 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
     });
@@ -379,7 +378,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
 
     # auth.backend given but unknown
     my $r3b = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'nosuchbackend' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
@@ -390,7 +389,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
     # auth.backend known; auth.file omitted -- now optional since it
     # resolves to a computed default (default_file), so this is valid
     my $r3c = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
@@ -399,7 +398,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
 
     # Missing sessions.backend only
     my $r4 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         users    => { backend  => 'database' },
     });
@@ -407,7 +406,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
 
     # Missing users.backend only
     my $r5 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'database' },
     });
@@ -417,7 +416,7 @@ subtest 'validate_setup_config detects missing required fields' => sub {
 subtest 'validate_setup_config rejects invalid backend values' => sub {
     # Invalid sessions backend
     my $r1 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'redis' },
         users    => { backend  => 'database' },
@@ -427,7 +426,7 @@ subtest 'validate_setup_config rejects invalid backend values' => sub {
 
     # Invalid users backend
     my $r2 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'oracle' },
@@ -437,7 +436,7 @@ subtest 'validate_setup_config rejects invalid backend values' => sub {
 
     # Both backends invalid - should have 2 errors
     my $r3 = Concierge::Desk::Setup::validate_setup_config({
-        storage  => { base_dir => '/path' },
+        base_dir => '/path',
         auth     => { backend  => 'pwd', file => '/path/auth.pwd' },
         sessions => { backend  => 'bad' },
         users    => { backend  => 'also_bad' },
