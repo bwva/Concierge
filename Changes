@@ -37,6 +37,18 @@ v0.9.0  2026-07-05
       method for ID generation -- broken outright under the new factory,
       which has no class methods; now call the configured backend
       instance or Concierge::Auth::Generators directly.
+    - BREAKING: Desk::Setup's build_desk() now separates auth storage
+      *location* from *naming*, mirroring sessions_dir/users_dir. Added
+      storage.auth_dir (defaults to base_dir; created like the other
+      storage directories) to control where any backend-specific
+      storage (e.g. the 'pwd' backend's password file) lives, including
+      outside the rest of the desk's storage entirely if desired.
+      auth.file is now a filename only (default 'auth.pwd' for 'pwd'),
+      not a full path -- previously it was an explicit path that, if
+      given relative to '.', silently ended up outside the desk
+      directory once storage.base_dir '.'/'./' was normalized to
+      './desk'. Passing a full path in auth.file is no longer
+      supported; use auth_dir for custom locations instead.
 
 v0.8.4  2026-06-05
     - Desk::Setup POD: add UI Formatting Hints section documenting format_as

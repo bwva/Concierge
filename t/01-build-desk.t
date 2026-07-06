@@ -4,6 +4,7 @@ use lib 'lib';
 use Test2::V0;
 use File::Temp qw(tempdir);
 use File::Spec;
+use Cwd qw(getcwd);
 
 use Concierge::Desk::Setup;
 
@@ -145,19 +146,70 @@ subtest 'build_desk with separate storage directories' => sub {
     is $result->{config}{users_dir},    $users_dir,    'users_dir in config';
 };
 
-subtest 'build_desk with custom auth file path' => sub {
+subtest 'build_desk with custom auth filename' => sub {
+    # auth.file is a filename only (not a path); it resolves under
+    # storage.auth_dir (or base_dir if auth_dir is not given).
     my $base_dir = tempdir(CLEANUP => 1);
-    my $auth_file = File::Spec->catfile($base_dir, 'passwords.pwd');
 
     my $result = Concierge::Desk::Setup::build_desk({
         storage  => { base_dir => $base_dir },
-        auth     => { backend => 'pwd', file => $auth_file },
+        auth     => { backend => 'pwd', file => 'passwords.pwd' },
         sessions => { backend => 'database' },
         users    => { backend => 'database', include_standard_fields => [] },
     });
 
-    ok $result->{success}, 'build_desk with custom auth file succeeds';
-    is $result->{config}{auth_args}{file}, $auth_file, 'custom auth file in config';
+    ok $result->{success}, 'build_desk with custom auth filename succeeds';
+    is $result->{config}{auth_args}{file},
+        File::Spec->catfile($base_dir, 'passwords.pwd'),
+        'custom auth filename resolved under base_dir';
+};
+
+subtest 'build_desk with custom storage.auth_dir' => sub {
+    # storage.auth_dir lets the auth store live anywhere, independent
+    # of base_dir -- same pattern as sessions_dir/users_dir.
+    my $base_dir = tempdir(CLEANUP => 1);
+    my $auth_dir = File::Spec->catdir($base_dir, 'secure-auth');
+
+    my $result = Concierge::Desk::Setup::build_desk({
+        storage  => { base_dir => $base_dir, auth_dir => $auth_dir },
+        auth     => { backend => 'pwd' },
+        sessions => { backend => 'database' },
+        users    => { backend => 'database', include_standard_fields => [] },
+    });
+
+    ok $result->{success}, 'build_desk with custom auth_dir succeeds';
+    ok -d $auth_dir, 'auth_dir created';
+    is $result->{config}{auth_dir}, $auth_dir, 'auth_dir recorded in config';
+    is $result->{config}{auth_args}{file},
+        File::Spec->catfile($auth_dir, 'auth.pwd'),
+        'default auth filename resolved under custom auth_dir';
+};
+
+subtest 'build_desk normalizes base_dir "." consistently for the auth file' => sub {
+    # Regression test: an explicit auth.file relative to '.' used to
+    # land outside the normalized './desk' directory once base_dir
+    # '.'/'./ ' was rewritten. Location is now controlled solely by
+    # storage.auth_dir (falling back to the *normalized* base_dir), so
+    # the auth file always ends up alongside sessions/users storage.
+    my $orig_cwd = getcwd();
+    my $temp_dir = tempdir(CLEANUP => 1);
+    chdir $temp_dir or die "Cannot chdir to $temp_dir: $!";
+
+    my $result = Concierge::Desk::Setup::build_desk({
+        storage  => { base_dir => '.' },
+        auth     => { backend => 'pwd' },
+        sessions => { backend => 'database' },
+        users    => { backend => 'database', include_standard_fields => [] },
+    });
+
+    ok $result->{success}, 'build_desk with base_dir "." succeeds';
+    is $result->{desk}, './desk', 'base_dir normalized to ./desk';
+    is $result->{config}{auth_args}{file}, File::Spec->catfile('./desk', 'auth.pwd'),
+        'auth file path lands inside the normalized ./desk directory';
+    ok -f File::Spec->catfile($temp_dir, 'desk', 'auth.pwd'),
+        'auth.pwd physically exists under ./desk, not the app root';
+
+    chdir $orig_cwd or die "Cannot chdir back to $orig_cwd: $!";
 };
 
 subtest 'build_desk with field configuration' => sub {
@@ -292,15 +344,15 @@ subtest 'validate_setup_config detects missing required fields' => sub {
     ok !$r3b->{success}, 'fails when auth.backend is unknown';
     like $r3b->{errors}[0], qr/Invalid auth\.backend/i, 'error mentions invalid auth.backend';
 
-    # auth.backend known but missing its required setting (file)
+    # auth.backend known; auth.file omitted -- now optional since it
+    # resolves to a computed default (default_file), so this is valid
     my $r3c = Concierge::Desk::Setup::validate_setup_config({
         storage  => { base_dir => '/path' },
         auth     => { backend  => 'pwd' },
         sessions => { backend  => 'database' },
         users    => { backend  => 'database' },
     });
-    ok !$r3c->{success}, 'fails when auth.file missing for pwd backend';
-    like $r3c->{errors}[0], qr/Missing auth\.file/i, 'error mentions missing auth.file';
+    ok $r3c->{success}, 'auth.file is optional for pwd backend (has a default)';
 
     # Missing sessions.backend only
     my $r4 = Concierge::Desk::Setup::validate_setup_config({
