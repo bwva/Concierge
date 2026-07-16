@@ -1,7 +1,7 @@
-package Concierge v0.9.0;
+package Concierge v0.10.0;
 use v5.36;
 
-our $VERSION = 'v0.9.0';
+our $VERSION = 'v0.10.0';
 
 # ABSTRACT: Service layer orchestrator for authentication, sessions, and user data
 
@@ -877,7 +877,7 @@ Concierge - Service layer orchestrator for authentication, sessions, and user da
 
 =head1 VERSION
 
-v0.9.0
+v0.10.0
 
 =head1 SYNOPSIS
 
@@ -1094,6 +1094,45 @@ user_keys mapping, and runs session cleanup.
 Croaks if C<$desk_location> is not an existing directory.
 
 Returns C<< { success => 1, concierge => $obj } >> on success.
+
+=head3 new_concierge
+
+    my $concierge = Concierge->new_concierge();
+
+Low-level constructor: returns a bare, uninitialized C<Concierge> object with
+no components attached. Used internally by C<open_desk()>. Application code
+should use C<open_desk()> (or C<Concierge::Desk::Setup::build_desk()> for
+first-time setup) rather than calling this directly.
+
+=head3 save_user_keys
+
+    my $result = $concierge->save_user_keys();
+
+Writes the in-memory C<user_keys> mapping (user_key => session/user_id
+lookup data, used by C<restore_user()>) to persistent storage as JSON.
+Called automatically after any operation that changes the mapping
+(login, logout, guest promotion, user removal, etc.); applications do
+not normally need to call it directly.
+
+Returns C<< { success => 1 } >> on success, or
+C<< { success => 0, message => '...' } >> if the file cannot be written.
+
+=head2 Component Accessors
+
+=head3 auth, sessions, users
+
+    my $auth_obj     = $concierge->auth;
+    my $sessions_obj = $concierge->sessions;
+    my $users_obj    = $concierge->users;
+
+Read-only accessors returning the live, already-instantiated component
+object ( L<Concierge::Auth>, L<Concierge::Sessions>, or L<Concierge::Users>,
+or a substitute -- see L</EXTENSIBILITY> ) for direct use when an operation
+isn't exposed as a Concierge-level convenience method. This is the same
+"bare accessor" escape hatch described in L</Component Substitution> and
+L<Concierge::Desk::Component>'s C<promote> mechanism -- it remains available
+regardless of what a component chooses to C<promote> onto C<$concierge>
+directly.
 
 =head2 User Lifecycle
 
