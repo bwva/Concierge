@@ -27,3 +27,6 @@ cover_db/
 
 # Backup files
 MANIFEST.bak
+
+# Local archive/scratch (not part of the distribution or git history going forward)
+ZZZ_archive/
