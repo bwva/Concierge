@@ -46,7 +46,7 @@ say $user->session_id;      # random hex token
 
 A *desk* is a directory containing the configuration and data files for all
 three components. You create one with `Concierge::Desk::Setup`, then open it at
-runtime with `open_desk()`. Opening a desk instantiates all components from
+runtime with `Concierge->open_desk()`. Opening a desk instantiates all components from
 the saved configuration and runs session cleanup automatically.
 
 ```perl
@@ -87,7 +87,7 @@ the right data and backend access.
 
 ### Authentication — Concierge::Auth
 
-- **Argon2id** password hashing and verification; no plaintext credentials
+- **Argon2** password hashing and verification; no plaintext credentials
   written to disk
 - Random value generators: hex IDs, alphanumeric tokens, UUIDs (v4),
   word-passphrases from a system dictionary
@@ -97,7 +97,10 @@ the right data and backend access.
 
 ### Sessions — Concierge::Sessions
 
-- **Multiple backends**: SQLite (recommended), flat-file, or in-memory text
+- **Multiple backends**: SQLite (recommended) or flat-file
+- Every session lives in memory first; data is only written to whichever
+  backend is configured when `->save()` is called. Some sessions never call
+  `save()` at all and exist purely for in-process continuity.
 - Sessions carry arbitrary key/value data (shopping carts, wizard state,
   preferences, etc.)
 - Configurable timeout per session; expired sessions cleaned up automatically
@@ -112,17 +115,28 @@ the right data and backend access.
 - **Configurable field schema**: built-in standard fields plus
   application-defined fields added at setup time
 
-Standard fields include:
+Standard fields are:
 
 | Field | Notes |
 |---|---|
 | `user_id` | Required, unique identifier |
 | `moniker` | Required, display name |
-| `email`, `phone` | Contact fields |
-| `access_level` | e.g. `admin`, `staff`, `member` |
-| `user_status` | e.g. `OK`, `suspended` |
+| `user_status` | Account status, e.g. `Eligible`, `OK`, `Inactive` |
+| `access_level` | Permission level, e.g. `anon`, `visitor`, `member`, `staff`, `admin` |
+| `first_name` | User's first name |
+| `middle_name` | User's middle name |
+| `last_name` | User's last name |
+| `prefix` | Name prefix or title, e.g. `Dr`, `Mr`, `Ms` |
+| `suffix` | Name suffix or professional designation, e.g. `Jr`, `PhD` |
+| `organization` | User's organization or affiliation |
+| `title` | User's position or job title |
+| `email` | Email address for notifications |
+| `phone` | Phone number with country code |
+| `text_ok` | Consent for text messages |
 | `term_ends` | Membership/subscription expiry |
 | `last_login_date` | Auto-updated on login |
+| `last_mod_date` | Auto-updated on every profile write |
+| `created_date` | Set once when the account is created |
 
 Applications extend this with `app_fields` at setup time:
 
