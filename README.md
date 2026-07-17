@@ -69,11 +69,11 @@ my $concierge = $result->{concierge};
 Concierge provides three graduated levels, each returning a
 `Concierge::Desk::User` object with methods appropriate to that level:
 
-| Level | Method | Session | User record | Auth |
-|---|---|---|---|---|
-| Visitor | `admit_visitor()` | No | No | No |
-| Guest | `checkin_guest()` | Yes | No | No |
-| Logged-in | `login_user()` | Yes | Yes | Yes |
+| Level | Method | User key | Session | User record | Auth |
+|---|---|---|---|---|---|
+| Visitor | `admit_visitor()` | Yes | No | No | No |
+| Guest | `checkin_guest()` | Yes | Yes | No | No |
+| Logged-in | `login_user()` | Yes | Yes | Yes | Yes |
 
 A guest can be promoted to a logged-in user with `login_guest()`, which
 transfers any session data (shopping cart, preferences, etc.) to the new
