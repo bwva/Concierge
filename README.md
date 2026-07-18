@@ -92,8 +92,8 @@ the right data and backend access.
 - Random value generators: hex IDs, alphanumeric tokens, UUIDs (v4),
   word-passphrases from a system dictionary
 - Designed for substitution: swap in any replacement that implements the
-  same method contract (`checkPwd`, `setPwd`, `resetPwd`, `deleteID`, etc.)
-  for LDAP, OAuth, or other schemes
+  same method contract (`enroll`, `authenticate`, `is_id_known`,
+  `change_credentials`, `revoke`) for LDAP, OAuth, or other schemes
 
 ### Sessions — Concierge::Sessions
 
@@ -121,8 +121,8 @@ Standard fields are:
 |---|---|
 | `user_id` | Required, unique identifier |
 | `moniker` | Required, display name |
-| `user_status` | Account status, e.g. `Eligible`, `OK`, `Inactive` |
-| `access_level` | Permission level, e.g. `anon`, `visitor`, `member`, `staff`, `admin` |
+| `user_status` | Required, account status, e.g. `Eligible`, `OK`, `Inactive` |
+| `access_level` | Required, permission level, e.g. `anon`, `visitor`, `member`, `staff`, `admin` |
 | `first_name` | User's first name |
 | `middle_name` | User's middle name |
 | `last_name` | User's last name |
@@ -152,6 +152,9 @@ Concierge::Desk::Setup->build_desk('./desk', {
 
 Field definitions can also override built-in defaults (labels, null values,
 required flags, etc.) via `field_overrides`.
+
+All or selected standard fields may also be omitted entirely, except for the
+required fields and automatic date fields.
 
 ## Consistent Return Values
 
