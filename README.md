@@ -115,28 +115,8 @@ the right data and backend access.
 - **Configurable field schema**: built-in standard fields plus
   application-defined fields added at setup time
 
-Standard fields are:
-
-| Field | Notes |
-|---|---|
-| `user_id` | Required, unique identifier |
-| `moniker` | Required, display name |
-| `user_status` | Required, account status, e.g. `Eligible`, `OK`, `Inactive` |
-| `access_level` | Required, permission level, e.g. `anon`, `visitor`, `member`, `staff`, `admin` |
-| `first_name` | User's first name |
-| `middle_name` | User's middle name |
-| `last_name` | User's last name |
-| `prefix` | Name prefix or title, e.g. `Dr`, `Mr`, `Ms` |
-| `suffix` | Name suffix or professional designation, e.g. `Jr`, `PhD` |
-| `organization` | User's organization or affiliation |
-| `title` | User's position or job title |
-| `email` | Email address for notifications |
-| `phone` | Phone number with country code |
-| `text_ok` | Consent for text messages |
-| `term_ends` | Membership/subscription expiry |
-| `last_login_date` | Auto-updated on login |
-| `last_mod_date` | Auto-updated on every profile write |
-| `created_date` | Set once when the account is created |
+See the Concierge::Users README (Field Customization) for the full list of
+standard fields.
 
 Applications extend this with `app_fields` at setup time:
 
