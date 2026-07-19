@@ -873,7 +873,9 @@ __END__
 
 =head1 NAME
 
-Concierge - Service layer orchestrator for authentication, sessions, and user data
+Concierge - Extensible service layer orchestrator of operational resources
+for applications, with built-in provisions for authentication, sessions,
+and user data.
 
 =head1 VERSION
 
@@ -914,9 +916,150 @@ v0.10.0
     # Log out
     $concierge->logout_user($user->session_id);
 
+=head1 CONCEPTS
+
+Concierge is built around four ideas: it is I<extensible>, it behaves as a
+I<service layer>, it I<orchestrates> rather than reimplements, and it exists
+to simplify an application's access to I<operational resources>. The sections below
+define each term as used throughout this documentation; L</Architecture> and
+L</EXTENSIBILITY> further down build on them.
+
+=head2 Extensible
+
+Concierge is extensible in two independent ways:
+
+=over 4
+
+=item *
+
+Each identity-core component (Auth, Sessions, Users) is itself extensible as
+to backend and storage configuration -- see each component's own POD, and
+L</Component Substitution> for replacing a component outright.
+
+=item *
+
+Components beyond the identity core may be added to a desk. Concierge can
+treat an added component purely as a pass-through:
+
+    my $res = $concierge->{'OthComp'}->OthCompMthd();
+    my $res = $concierge->OthComp->OthCompMthd();
+    my $OthCompObj = $concierge->OthComp;
+    # or my $OthCompObj = $concierge->{'OthComp'};
+    my $res = $OthCompObj->OthCompMthd(); # $concierge no longer involved
+
+Additionally, selected methods of a component may be I<promoted> to be
+direct methods of the concierge object.
+
+    # OthComp's OthCompMthd specified in setup to be promoted
+    my $res = $concierge->OthCompMthd();
+
+See L</Additional Components> and L</Component Method Promotion>.
+
+=back
+
+=head2 Service Layer
+
+Concierge is a I<service layer>: application code depends on it to manage the
+configured components without crashing or interfering with the application's control
+flow. It is designed so that a partially-working concierge is never returned,
+and failures are never silent.
+
+=over 4
+
+=item *
+
+The setup methods (C<build_desk()> or C<build_quick_desk()>) must validate their entire
+configuration or fail with messages. If setup succeeds, the Concierge
+config for the app is saved.
+
+=item *
+
+The runtime method, C<open_desk()> must fully instantiate the desk's saved
+configuration or fail with messages. If open_desk() succeeds, it will return 
+a fully capable concierge to the app.
+
+=item *
+
+Nearly every setup validation failure -- a missing or unknown
+backend, a missing required setting, a component's C<setup()> failing --
+returns a structured C<< { success => 0, message => '...' } >> response
+rather than raising an exception. The one exception is a failure to create a
+storage directory on disk, which is treated as an unrecoverable environment
+problem and raises an exception instead.
+
+Most open_desk() instantiation problems (an outdated config
+format, a corrupt config file, an auth backend that fails to initialize) are
+likewise returned as structured failures. Two cases are stricter and raise an
+exception instead: the desk directory itself does not exist, or a
+non-optional added component fails to instantiate. An added component marked
+C<optional> does not raise in this case -- see
+L<Concierge::Desk::UnavailableComponent>.
+
+Failure of C<open_desk()> itself is the sole post-setup exception.
+
+=item *
+
+With the protections in setup methods and C<open_desk()>, any failure is 
+always clearly reported, and a concierge desk location or object 
+is only ever handed back to the application if it is fully functional.
+
+=item *
+
+Once a desk is open, the concierge suite's API methods are never fatal to the
+application: every API method returns a structured response indicating success
+or failure (see L</Return Values>), so the application always retains
+control flow.
+
+=back
+
+=head2 Orchestration
+
+Concierge's job is to coordinate access to services and resources an
+application needs, not to reimplement them. Depending on the component, this
+takes one of two forms:
+
+=over 4
+
+=item *
+
+For the identity core, Concierge directly provides the capability:
+C<login_user()> authenticates via Auth, retrieves a record from Users, and
+creates a session via Sessions in one coordinated call.
+
+=item *
+
+For an added component, Concierge's involvement can end at handoff: the
+component satisfies the minimal contract in L<Concierge::Desk::Component> so
+it can be loaded and reached through the concierge, but Concierge does not
+inherit from it or in any way intervene in its operations - that is for the 
+application as it uses the component.
+
+Alternatively, if useful to the application, methods from added components 
+may be promoted to be methods of the concierge object itself. 
+Promoted methods may be called with their own names if not conflicting
+with built-ins, and may be aliased to avoid conflicts or provide recognizable
+names. See Extensibility, above. 
+
+=back
+
+=head2 Operational Resources
+
+An application's "operational resources" are the services and data stores
+that support its main purpose without being that purpose -- authentication,
+sessions, and user records are the built-in examples, but the term applies
+equally to anything an application uses to support its main functionality. 
+
+Concierge is deliberately agnostic about what an operational resource actually
+is: other than the identity core components, an added component needs only
+to satisfy the contract in L<Concierge::Desk::Component> to be set up, 
+deployed, and provided to the application the same way.
+
 =head1 DESCRIPTION
 
-Concierge coordinates three component modules behind a single API:
+Concierge is an extensible service layer orchestrator of operational
+resources for applications -- see L</CONCEPTS> above for what that means.
+Out of the box, its identity core coordinates three component modules
+behind a single API:
 
 =over 4
 
@@ -928,14 +1071,18 @@ Concierge coordinates three component modules behind a single API:
 
 =back
 
-Applications interact only with Concierge and the L<Concierge::Desk::User> objects
-it returns. The component modules are never exposed directly.
+Applications primarily interact with Concierge and the L<Concierge::Desk::User>
+objects it returns; most operations never require touching a component
+module directly. When a needed operation isn't exposed as a Concierge-level
+method, any component -- identity-core or added -- remains reachable
+through its own accessor (see L</Component Accessors> and L</EXTENSIBILITY>).
 
 =head2 What the Suite Provides
 
-Concierge handles orchestration -- coordinating components, managing the
-user_key mapping, and returning consistent structured results. The
-capabilities of the suite live in the three components:
+Concierge handles orchestration -- coordinating components and returning
+consistent structured results.
+
+The core capabilities of the suite live in the three components:
 
 B<Authentication> (L<Concierge::Auth>): Argon2id password hashing and
 verification; no plaintext credentials are ever written to disk. Also
@@ -946,7 +1093,7 @@ L<Concierge::Auth::Base>) can replace it for LDAP, OAuth, or any other
 scheme.
 
 B<Sessions> (L<Concierge::Sessions>): Full session lifecycle -- creation,
-retrieval, expiry, and cleanup -- with SQLite, file, or in-memory backends.
+retrieval, expiry, and cleanup -- with SQLite, file, or in-memory storage.
 Sessions carry arbitrary key/value data. A single-session-per-user policy
 is enforced: creating a new session automatically removes any prior session
 for that user. Expired sessions are cleaned up each time a desk is opened.
@@ -955,16 +1102,22 @@ B<User Records> (L<Concierge::Users>): User data store with a configurable
 field schema. Standard fields (C<moniker>, C<email>, C<phone>,
 C<access_level>, C<user_status>, C<term_ends>, and others) are built in and
 can be selectively overridden. Applications add their own fields via
-C<app_fields> at setup time. Supports SQLite, YAML, and CSV/TSV backends,
-with filtering and listing operations.
+C<app_fields> at setup time. Provides built-in SQLite, YAML, and CSV/TSV
+backends, with filtering and listing operations.
 
 For the full API of any component, see its own documentation.
 
 =head2 Desks
 
-A I<desk> is a storage directory containing the configuration and data files
-for all three components. Use L<Concierge::Desk::Setup> to create a desk, then
-C<open_desk()> to load it at runtime.
+A I<desk> is a storage directory containing the configuration for the
+application's concierge. Normally the data and any config files for the 
+identity core components are kept there, and any additional components 
+may be configured for that as well. At the same time, paths may be provided
+to other locations to accommodate considerations such as security and
+interfacing with existing systems.
+
+Use L<Concierge::Desk::Setup> to create a desk, then C<open_desk()> to load
+it at runtime.
 
 =head2 User Participation Levels
 
@@ -1076,7 +1229,7 @@ configuration, and Concierge-level orchestration -- is intentionally
 replicable.  Each identity core component can also be substituted with
 a conforming replacement, and additional components (Organizations,
 Assets, etc.) can be added by following the same conventions.  See
-L</EXTENSIBILITY> for details.
+L</EXTENSIBILITY> for details, and L</CONCEPTS> for the ideas behind it.
 
 =head1 METHODS
 
@@ -1302,6 +1455,9 @@ identity fields cannot be changed via update operations.
 
 =head1 EXTENSIBILITY
 
+See L</CONCEPTS> for the ideas behind extensibility, service-layer
+guarantees, and orchestration that this section implements.
+
 =head2 Component Substitution
 
 Each identity core component can be replaced with a drop-in alternative as
@@ -1316,15 +1472,11 @@ B<Auth> -- Concierge calls:
     $auth->revoke($user_id)
 
 A substitute backend must implement this contract -- see
-L<Concierge::Auth::Base> -- and must also provide the
+L<Concierge::Auth::Base>, which also provides working default
 L<Concierge::Auth::Generators> methods (used for visitor/guest
-identifiers, independent of authentication). Register it in
-C<Concierge::Desk::Setup>'s backend catalog so C<< auth => {
-backend => 'mybackend', ... } >> resolves to it at desk-build time,
-or bypass config entirely by constructing
-C<< Concierge::Auth->new(backend => 'My::Fully::Qualified::Class', ...) >>
-directly and assigning it to C<< $concierge->{auth} >> after
-C<open_desk>.
+identifiers, independent of authentication) to any backend that
+inherits from it; a substitute only needs to override these if it
+wants different generation logic.
 
 B<Sessions> -- Concierge calls:
 
@@ -1359,13 +1511,6 @@ B<Users> -- Concierge calls:
 =item C<< $users->list_users($filter) >> -- returns C<< { success => 1, user_ids => [...] } >>
 
 =back
-
-To substitute a component, supply an object that responds to these methods and
-assign it to the corresponding slot on the concierge object after C<open_desk()>:
-
-    my $result = Concierge->open_desk($desk_dir);
-    my $c = $result->{concierge};
-    $c->{auth} = My::LDAPAuth->new(...);   # drop-in replacement
 
 =head2 Additional Components
 

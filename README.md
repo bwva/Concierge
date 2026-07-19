@@ -1,9 +1,10 @@
 # Concierge
 
-Service layer orchestrator for authentication, session management, and user
-data operations in Perl. Concierge combines three independent component
-modules behind a single, consistent API so applications never deal with
-credential storage, session backends, or user record schemas directly.
+Extensible service layer orchestrator of operational resources for
+applications, with built-in provisions for authentication, sessions, and
+user data. Concierge combines three independent component modules behind a
+single, consistent API so applications never deal with credential storage,
+session backends, or user record schemas directly.
 
 ## Synopsis
 
@@ -39,6 +40,36 @@ my $user = $login->{user};  # Concierge::Desk::User object
 say $user->moniker;         # "Alice"
 say $user->session_id;      # random hex token
 ```
+
+## Concepts
+
+Concierge is built around four ideas: it is **extensible**, it behaves as a
+**service layer**, it **orchestrates** rather than reimplements, and it
+exists to simplify an application's **operational resources**. See
+`perldoc Concierge` (CONCEPTS section) for the full discussion; summarized:
+
+- **Extensible** — Each identity-core component (Auth, Sessions, Users) is
+  itself extensible as to backend and storage configuration. Components
+  beyond the identity core may also be added to a desk, either as a plain
+  pass-through (reached through their own accessor) or with selected
+  methods `promote`d directly onto `$concierge`.
+- **Service Layer** — Setup (`build_desk()`/`build_quick_desk()`) and
+  `open_desk()` both guarantee that any failure is always clearly reported
+  — as a structured `{ success => 0, message => '...' }` response in
+  nearly every case, or as an exception in a couple of narrow structural
+  cases (missing desk directory, a non-optional component that fails to
+  load). A concierge object is only ever handed back when fully
+  functional, and once a desk is open, its API methods are never fatal to
+  the application.
+- **Orchestration** — For the identity core, Concierge directly provides
+  the capability (e.g. `login_user()` coordinates Auth, Users, and
+  Sessions in one call). For an added component, Concierge's involvement
+  can end at handoff — the component just needs to satisfy the minimal
+  contract in `Concierge::Desk::Component`.
+- **Operational Resources** — The services and data stores that support an
+  application's main purpose without being that purpose. Authentication,
+  sessions, and user records are the built-in examples; the same pattern
+  extends to anything an added component manages.
 
 ## How It Works
 
