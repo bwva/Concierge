@@ -505,7 +505,7 @@ v0.10.0
     # Simple setup -- database backends, all standard user fields
     my $result = Concierge::Desk::Setup::build_quick_desk(
         './desk',
-        ['role', 'theme'],       # application-specific user fields
+        ['position', 'rbi'],     # application-specific user fields
     );
 
     # Advanced setup -- full control over backends and field configuration
@@ -527,7 +527,7 @@ v0.10.0
             backend                 => 'database',  # 'database', 'yaml', or 'file'
             dir                     => 'users',      # optional; default: base_dir
             include_standard_fields => [qw/email phone first_name last_name/],
-            app_fields              => ['membership_tier', 'department'],
+            app_fields              => ['employee_id', 'department'],
             field_overrides         => [{ field_name => 'email', required => 1 }],
         },
     });
@@ -553,7 +553,8 @@ v0.10.0
 
 Concierge::Desk::Setup provides methods for one-time initialization of a
 Concierge desk -- the storage directory containing configuration and data
-files for the identity core components (Auth, Sessions, Users).
+files for the identity core components (Auth, Sessions, Users), and may
+be used by added components as well.
 
 Setup is separate from runtime operations.  Use this module once to
 create a desk, then use L<Concierge/open_desk> at runtime.
@@ -676,16 +677,16 @@ B<Core fields> (always present):
 
     user_id        system   Primary authentication identifier (max 30)
     moniker        moniker  Display name, nickname, or initials (max 24)
-    user_status    enum     Eligible*, OK, Inactive (max 20)
-    access_level   enum     anon*, visitor, member, staff, admin (max 20)
+    user_status    enum     *Eligible, OK, Inactive (max 20)
+    access_level   enum     *anon, visitor, member, staff, admin (max 20)
 
-B<Standard fields> (selectable at setup):
+B<Standard fields> (selectable and configurable at setup):
 
     first_name     name     max 50
     middle_name    name     max 50
     last_name      name     max 50
-    prefix         enum     (none) Dr Mr Ms Mrs Mx Prof Hon Sir Madam
-    suffix         enum     (none) Jr Sr II III IV V PhD MD DDS Esq
+    prefix         enum     (no default) Dr Mr Ms Mrs Mx Prof Hon Sir Madam
+    suffix         enum     (no default) Jr Sr II III IV V PhD MD DDS Esq
     organization   text     max 100
     title          text     max 100
     email          email    max 255
@@ -698,6 +699,11 @@ B<System fields> (auto-managed, always present):
     last_login_date system   Updated on every successful login
     last_mod_date   system   Updated on every write
     created_date    system   Set once on creation
+
+B<Application fields> (optional, defined by the application):
+
+    Custom fields the application adds via C<app_fields>; see
+    L</Adding Application Fields> below.
 
 Core and system fields cannot be removed.  Standard fields default to
 C<< required => 0 >>.
