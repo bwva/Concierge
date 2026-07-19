@@ -69,6 +69,26 @@ a uniform failure hashref, so application code that always checks
 C<< $result->{success} >> continues to work without special-casing a
 missing component.
 
+This substitution can only happen at C<open_desk()> time, and only for
+a component that was configured C<< optional => 1 >> in the desk's
+C<components> block at build time. It presupposes the component
+already succeeded once: a C<setup()> failure always fails the entire
+desk build, regardless of C<optional> (see
+L<Concierge::Desk::Setup/build_desk>), so the desk could not have been
+built -- and Concierge could not have been instantiated -- unless this
+component's C<setup()> succeeded. C<UnavailableComponent> stands in
+only for a later C<new()> failure, typically in some subsequent process
+opening the same already-built desk, where something in that runtime
+environment (a missing library, an unreachable resource) causes
+construction to fail even though the persisted C<payload> itself is
+fine.
+
+There is no supported way to swap in a working component after this
+substitution occurs. Desk configuration is fixed at C<open_desk()>
+time, and patching C<< $concierge->{name} >> directly with a live
+replacement, while technically possible today, is not a sanctioned
+pattern.
+
 =head1 METHODS
 
 =head2 new
