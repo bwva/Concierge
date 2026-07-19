@@ -104,7 +104,7 @@ sub build_quick_desk ($storage_dir, $app_fields=[]) {
     my $auth_args    = { file => $auth_file };
     unlink $auth_file if -f $auth_file;
     $concierge->{auth} = Concierge::Auth->new(
-        backend => $auth_backend,
+        backend_class => $auth_backend,
         %$auth_args,
     );
 
@@ -245,7 +245,7 @@ sub build_desk ($config) {
     # Initialize Auth component
     unlink $auth_args{file} if $auth_args{file} && -f $auth_args{file};
     $concierge->{auth} = Concierge::Auth->new(
-        backend => $auth_spec->{class},
+        backend_class => $auth_spec->{class},
         %auth_args,
     );
 

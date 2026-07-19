@@ -152,7 +152,7 @@ sub open_desk ($class, $desk_location) {
 	my $auth;
 	eval {
 		$auth = Concierge::Auth->new(
-			backend	=> $concierge_config->{auth_backend},
+			backend_class	=> $concierge_config->{auth_backend},
 			%{ $concierge_config->{auth_args} || {} },
 		);
 	};
