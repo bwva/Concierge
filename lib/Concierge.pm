@@ -1282,8 +1282,8 @@ Read-only accessors returning the live, already-instantiated component
 object ( L<Concierge::Auth>, L<Concierge::Sessions>, or L<Concierge::Users>,
 or a substitute -- see L</EXTENSIBILITY> ) for direct use when an operation
 isn't exposed as a Concierge-level convenience method. This is the same
-"bare accessor" escape hatch described in L</Component Substitution> and
-L<Concierge::Desk::Component>'s C<promote> mechanism -- it remains available
+"bare accessor" direct component access described in L</Component Substitution>
+and L<Concierge::Desk::Component>'s C<promote> mechanism -- it remains available
 regardless of what a component chooses to C<promote> onto C<$concierge>
 directly.
 
@@ -1594,8 +1594,9 @@ components genuinely additional to that identity core.
 
 A component's own bare accessor (C<< $concierge->{name}->method(...) >>
 or C<< $concierge->name->method(...) >>) always exposes its complete
-API -- this is the permanent escape hatch and needs no configuration.
-C<promote> is an optional, purely cosmetic convenience on top of it: a
+API -- this is the standard access Concierge provides the application
+for using the component, and needs no configuration.
+C<promote> is an optional, convenience layer on top of it: a
 curated allowlist of a component's methods forwarded directly onto
 C<$concierge>, declared in the same C<components> config block:
 
@@ -1604,17 +1605,21 @@ C<$concierge>, declared in the same C<components> config block:
             class   => 'Concierge::Reports',
             promote => ['get_signal_report'],                   # same-name
             # or:
-            promote => { get_signal_report => 'fetch_signal_report' },  # aliased
+            promote => { fetch_signal_report => 'get_signal_report' },  # aliased
         },
     },
 
     my $c = Concierge->open_desk($desk_dir)->{concierge};
-    $c->get_signal_report(...);                # promoted sugar
-    $c->{reports}->get_signal_report(...);      # escape hatch -- always works,
-                                                 # promoted or not
+    $c->fetch_signal_report(...);               # promoted sugar, using alias
+    $c->{reports}->get_signal_report(...);      # direct component access,
+                                                 # always works, promoted or not
+
+In other words, the concierge may use its own alias to call the
+component's real method -- e.g. C<< $concierge->fetch_signal_report(...) >>
+calls the component's C<get_signal_report()>.
 
 C<promote> is not access control -- it never restricts what's reachable
-through the escape hatch. All validation (shape, method-existence, and
+via direct component access. All validation (shape, method-existence, and
 name-collision checks against core methods and other components) happens
 once, at C<build_desk()> time; C<open_desk()> trusts the persisted result
 completely. See L<Concierge::Desk::Component/PROMOTION: EXPOSING

@@ -133,7 +133,10 @@ C<optional>, passed to C<< Concierge::Desk::Setup::build_desk() >>:
 
 An arrayref promotes each listed method under its own name. A hashref
 promotes C<< top_name => component_method >> pairs, letting the
-top-level name differ from the component's own method name.
+top-level name differ from the component's own method name. In other
+words, the concierge may use its own alias to call the component's real
+method -- e.g. C<< $concierge->fetch_signal_report(...) >> calls the
+component's C<get_signal_report()>.
 
     my $c = Concierge->open_desk($desk_dir)->{concierge};
     $c->fetch_signal_report(...);                 # promoted sugar, using alias
