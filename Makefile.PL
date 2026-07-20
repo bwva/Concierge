@@ -13,9 +13,9 @@ WriteMakefile(
         'Carp'               => 0,
         'JSON::PP'           => 0,
         'Params::Filter'     => '0.014',
-        'Concierge::Auth'    => '0.5.0',
-        'Concierge::Sessions' => 0,
-        'Concierge::Users'   => 0,
+        'Concierge::Auth'     => '0.5.2',
+        'Concierge::Sessions' => '0.11.3',
+        'Concierge::Users'    => '0.9.4',
     },
 
     TEST_REQUIRES => {

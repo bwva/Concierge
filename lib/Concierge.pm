@@ -93,8 +93,8 @@ sub open_desk ($class, $desk_location) {
 
 	# Instantiate sessions manager from $concierge_config
 	$concierge->{sessions}	= Concierge::Sessions->new(
-		storage_dir => $concierge_config->{sessions_dir} || $concierge_config->{storage_dir},
-		backend		=> $concierge_config->{sessions_backend} || '',
+		storage_dir	=> $concierge_config->{sessions_dir} || $concierge_config->{storage_dir},
+		backend_class	=> $concierge_config->{sessions_backend},
 	);
 
 	# Load user_keys mapping from file (or initialize empty for new desk)
@@ -1482,7 +1482,7 @@ B<Sessions> -- Concierge calls:
 
 =over 4
 
-=item C<< Concierge::Sessions->new(%args) >> -- constructor; accepts C<storage_dir> and C<backend>
+=item C<< Concierge::Sessions->new(%args) >> -- constructor; accepts C<storage_dir> and C<backend_class>
 
 =item C<< $sessions->new_session(%args) >> -- returns C<< { success => 1, session => $obj } >>
 
@@ -1646,6 +1646,27 @@ examples of what the component pattern enables:
 =item * C<Concierge::Calendar> -- event and booking records
 
 =back
+
+=head2 The backend_class Pattern
+
+L<Concierge::Auth>, L<Concierge::Sessions>, and L<Concierge::Users> each
+support multiple interchangeable storage/backend implementations of
+their own (e.g. Auth's password vs. future LDAP/OAuth backends,
+Sessions' database vs. file backends, Users' database/file/YAML
+backends). All three follow the same convention: the component itself
+accepts only C<backend_class>, an already-resolved, fully-qualified
+class name, and never guesses a class from a short friendly name --
+that resolution happens one layer up, in L<Concierge::Desk::Setup>'s
+internal per-component catalogs (C<%AUTH_BACKENDS>,
+C<%SESSIONS_BACKENDS>, C<%USERS_BACKENDS>), which map a desk config's
+friendly C<backend> name (C<'pwd'>, C<'database'>, C<'yaml'>, etc.) to
+its class and any settings that backend requires.
+
+A new component with multiple interchangeable backend implementations
+of its own should adopt this same C<backend_class> convention: accept
+only a fully-qualified class name at the component layer, and leave
+friendly-name-to-class resolution to whatever builds the desk config
+around it.
 
 =head2 Contributing
 
