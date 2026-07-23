@@ -30,3 +30,6 @@ MANIFEST.bak
 
 # Local archive/scratch (not part of the distribution or git history going forward)
 ZZZ_archive/
+
+# Local tool output (architecture reviews, etc. -- not part of the distribution)
+paad/
