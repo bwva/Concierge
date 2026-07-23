@@ -232,7 +232,7 @@ perldoc Concierge::Users   # user records, field schema, backends
 
 ## Status
 
-Under active development (v0.10.0). API may change before 1.0.
+Under active development (v0.11.0). API may change before 1.0.
 
 ## Author
 

@@ -1,7 +1,7 @@
-package Concierge::Desk::Setup v0.10.0;
+package Concierge::Desk::Setup v0.11.0;
 use v5.36;
 
-our $VERSION = 'v0.10.0';
+our $VERSION = 'v0.11.0';
 
 # ABSTRACT: Setup and configuration for Concierge desk initialization
 
@@ -561,7 +561,7 @@ Concierge::Desk::Setup - One-time desk creation and configuration for Concierge
 
 =head1 VERSION
 
-v0.10.0
+v0.11.0
 
 =head1 SYNOPSIS
 

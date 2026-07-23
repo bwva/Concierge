@@ -1,6 +1,6 @@
 Revision history for Concierge
 
-v0.10.1  (unreleased)
+v0.11.0  2026-07-23
     - BREAKING: Sessions and Users backend selection now follows the same
       backend_class convention as Auth (introduced in v0.9.0): Desk::Setup
       gains %SESSIONS_BACKENDS and %USERS_BACKENDS catalogs, resolving a
