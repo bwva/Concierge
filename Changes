@@ -35,6 +35,12 @@ v0.10.1  (unreleased)
       the old name implied a generic swappable database backend that
       never existed). The 'database' friendly name at the desk-config
       layer is unaffected.
+    - open_desk(): Auth backend-initialization failures (including
+      the pre-v0.5 missing-auth_backend case) are fatal again, matching
+      Sessions and Users -- a desk must never open half-functional.
+      Reverts the graceful { success => 0, ... } handling added in
+      v0.9.0/0.10.0-dev; see commit 50a38bd for the change being
+      reverted.
 
 v0.10.0  2026-07-16
     - Removed Concierge::Desk::Base and Concierge::Desk::RecordsStore.

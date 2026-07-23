@@ -139,25 +139,19 @@ sub open_desk ($class, $desk_location) {
 	$concierge->{users}	= Concierge::Users->new( $concierge_config->{users_config_file} );
 
 	unless ($concierge_config->{auth_backend}) {
-		return { success => 0, message =>
+		croak
 			"This desk must be built again to work with v0.5+ of Concierge::Auth, "
 			. "now shipping with Concierge v0.9+. Building the desk with the same "
 			. "original configuration will archive existing user data, but delete "
 			. "session and any credential storage, and will automatically install "
 			. "the default built-in ID-password authentication system. See the "
-			. "POD for how to use an alternative approach to user authentication."
-		};
+			. "POD for how to use an alternative approach to user authentication.";
 	}
 
-	my $auth;
-	eval {
-		$auth = Concierge::Auth->new(
-			backend_class	=> $concierge_config->{auth_backend},
-			%{ $concierge_config->{auth_args} || {} },
-		);
-	};
-	return { success => 0, message => "Failed to initialize auth backend: $@" } if $@;
-	$concierge->{auth} = $auth;
+	$concierge->{auth} = Concierge::Auth->new(
+		backend_class	=> $concierge_config->{auth_backend},
+		%{ $concierge_config->{auth_args} || {} },
+	);
 
 	# Load any additional components declared in concierge.conf's
 	# 'components' block (populated at build time by build_desk() -- see
@@ -1199,8 +1193,10 @@ C<< include_data => 1 >>, also returns C<users> (hashref keyed by user_id).
 
 See the individual method descriptions below for the complete field list.
 
-Methods never C<croak> during normal operation. The one exception is
-C<open_desk()>, which croaks if the desk directory does not exist.
+Methods never C<die> during normal operation. The one exception is
+C<open_desk()>, which uses C<Carp::croak> to locate the problem -- either
+the desk directory does not exist, or a non-optional added component (see
+L</Additional Components>) fails to load.
 
 =head2 Architecture
 
@@ -1244,7 +1240,8 @@ Opens an existing desk directory created by L<Concierge::Desk::Setup>. Reads
 the configuration file, instantiates all component modules, loads the
 user_keys mapping, and runs session cleanup.
 
-Croaks if C<$desk_location> is not an existing directory.
+Croaks if C<$desk_location> is not an existing directory, or if a
+non-optional added component (see L</Additional Components>) fails to load.
 
 Returns C<< { success => 1, concierge => $obj } >> on success.
 
@@ -1536,7 +1533,8 @@ to C<< Concierge::Desk::Setup::build_desk() >>:
 
 Each entry is resolved once, B<at build time>: C<build_desk()> creates
 the component's storage directory, C<require>s C<class>, calls
-C<< $class->new() >>, then calls C<< $comp->setup(\%entry_config) >>. The
+C<< my $comp = $class->new() >>, then calls
+C<< $comp->setup(\%entry_config) >>. The
 hashref C<setup()> returns is persisted verbatim into C<concierge.conf>
 as that component's C<payload> -- this is never recomputed at
 C<open_desk()>/runtime. A C<setup()> failure always fails the entire
