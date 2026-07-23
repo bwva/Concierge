@@ -180,8 +180,10 @@ All Concierge methods return a hashref:
 ```
 
 Methods never `die` or `croak` during normal operation (the one exception is
-`open_desk()`, which croaks if the desk directory does not exist). This makes
-Concierge safe to use in event-loop and persistent-process environments.
+`open_desk()`, which croaks if the desk directory does not exist, or if a
+non-optional added component -- see [Extensibility](#extensibility) below --
+fails to load). This makes Concierge safe to use in event-loop and
+persistent-process environments.
 
 ## Extensibility
 
