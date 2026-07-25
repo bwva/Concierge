@@ -583,7 +583,9 @@ sub checkin_guest ($self, $session_opts={}) {
 sub login_guest($self, $user_input, $guest_user_key) {
     # Convert guest to logged-in user, transferring session data (shopping cart, etc.)
     # $user_input: hashref with user_id, moniker, password (and optional email, etc.)
-    # This creates a new user account and transfers the guest's session data to it.
+    # Registers a new user account unless user_id already belongs to a known
+    # user, in which case this just logs them in -- transferring the guest's
+    # session data either way.
 
     # Step 1: Lookup guest's session_id from user_key mapping
     my $guest_mapping = $self->{user_keys}{$guest_user_key};
@@ -601,11 +603,26 @@ sub login_guest($self, $user_input, $guest_user_key) {
     my $guest_data_result = $guest_session->get_data();
     my $guest_data = $guest_data_result->{value} || {};
 
-    # Step 3: Create the new user account (Auth + Users)
-    my $add_result = $self->add_user($user_input);
-    return $add_result unless $add_result->{success};
+    # Step 3: Register a new user account (Auth + Users), unless user_id
+    # already belongs to a known user -- then skip straight to login.
+    my $user_id = $user_input->{user_id};
+    my $is_known_user = 0;
 
-    # Step 4: Log in the newly created user (authenticate, create session, get User object)
+    if (defined $user_id && length $user_id) {
+        my $verify = $self->verify_user($user_id);
+        if ($verify->{exists_in_auth} || $verify->{exists_in_users}) {
+            return { success => 0, message => "Account '$user_id' is in an inconsistent state; contact support" }
+                unless $verify->{verified};
+            $is_known_user = 1;
+        }
+    }
+
+    unless ($is_known_user) {
+        my $add_result = $self->add_user($user_input);
+        return $add_result unless $add_result->{success};
+    }
+
+    # Step 4: Log in the (new or known) user (authenticate, create session, get User object)
     my $auth_data = $auth_data_filter->($user_input);
     my $login_result = $self->login_user({
         user_id  => $auth_data->{user_id},
@@ -1337,9 +1354,17 @@ also include C<< is_guest => 1 >>.
     my $result = $concierge->login_guest(\%credentials, $guest_user_key);
     my $user = $result->{user};    # Concierge::Desk::User (logged-in)
 
-Converts a guest to a logged-in user. Authenticates with C<%credentials>,
-transfers any data from the guest's session to the new session, then
-deletes the guest session and removes the guest's user_key mapping.
+Converts a guest to a logged-in user. If C<%credentials>' C<user_id> does
+not already belong to a known user, registers a new account first (same
+requirements as C<add_user()>); if it does belong to a known user (e.g. a
+returning customer who browsed as a guest before logging in to pay),
+registration is skipped and the existing account is used instead.
+Authenticates with C<%credentials>, transfers any data from the guest's
+session to the new session, then deletes the guest session and removes
+the guest's user_key mapping.
+
+Returns failure if C<user_id> exists in only one of the Auth/Users
+components (an inconsistent state) rather than attempting either path.
 
 =head3 logout_user
 
