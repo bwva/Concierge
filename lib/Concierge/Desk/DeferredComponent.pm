@@ -1,7 +1,7 @@
-package Concierge::Desk::DeferredComponent v0.11.0;
+package Concierge::Desk::DeferredComponent v0.12.0;
 use v5.36;
 
-our $VERSION = 'v0.11.0';
+our $VERSION = 'v0.12.0';
 
 # ABSTRACT: Stand-in that defers a 'defer' component's real construction until first use
 
@@ -65,7 +65,7 @@ Concierge::Desk::DeferredComponent - Stand-in that defers a 'defer' component's 
 
 =head1 VERSION
 
-v0.11.0
+v0.12.0
 
 =head1 SYNOPSIS
 
