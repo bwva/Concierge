@@ -10,6 +10,7 @@ use File::Spec;
 use File::Path qw/make_path/;
 use JSON::PP qw< encode_json decode_json >;
 use Concierge;
+use Concierge::Desk::Component;
 
 # === COMPONENT MODULES ===
 use Concierge::Auth;
@@ -358,7 +359,21 @@ sub build_desk ($config) {
         my $class = $entry->{class}
             or return { success => 0, message => "components.$name is missing required 'class'" };
         my $optional = $entry->{optional} ? 1 : 0;
+        my $defer    = $entry->{defer}    ? 1 : 0;
         my $promote  = $entry->{promote};
+
+        # 'defer' forces 'optional': a required-and-deferred component's
+        # eventual first-use failure would happen mid-process, potentially
+        # while other users are already being served -- violating
+        # Concierge's guarantee that its API methods are never fatal once
+        # a desk is open. See Concierge::Desk::Component/PROBING for the
+        # full tier model.
+        if ($defer && !$optional) {
+            return {
+                success => 0,
+                message => "components.$name cannot use 'defer' without also being 'optional'",
+            };
+        }
 
         # Validate 'promote' shape and normalize into a list of
         # [$top_name, $method_name] pairs. This is build-time-only
@@ -415,12 +430,33 @@ sub build_desk ($config) {
         my %setup_args = %$entry;
         delete $setup_args{class};
         delete $setup_args{optional};
+        delete $setup_args{defer};
         delete $setup_args{promote};
         $setup_args{dir}  = $comp_dir;
         $setup_args{name} = $name;
 
         my $setup_result = $comp->setup(\%setup_args);
         return $setup_result unless $setup_result->{success};
+
+        # Tier 1b (build-time probe), 'defer' entries only: run the same
+        # probe-or-default check that open_desk() will later run at tier
+        # 2, via the shared helper, at a human-attended moment. Failure
+        # here unconditionally fails the whole build -- deliberately
+        # *not* gated by 'optional', even though 'defer' always implies
+        # 'optional' -- to catch a broken probe or an unrequireable class
+        # now, rather than only discovering it later, unattended, as a
+        # silent UnavailableComponent substitution. See
+        # Concierge::Desk::Component/PROBING for the full tier model.
+        if ($defer) {
+            my $probe = Concierge::Desk::Component::probe_component($class, $setup_result);
+            unless ($probe->{success}) {
+                return {
+                    success => 0,
+                    message => "Build-time probe failed for deferred component '$name' ($class): "
+                        . ($probe->{message} // 'unknown reason'),
+                };
+            }
+        }
 
         # Validate 'promote' method-existence and name-collisions now
         # that $comp is a fully live, working instance (setup()
@@ -448,6 +484,7 @@ sub build_desk ($config) {
         $components{$name} = {
             class    => $class,
             optional => $optional,
+            defer    => $defer,
             payload  => $setup_result,
             (defined $promote ? (promote => $promote) : ()),
         };
@@ -742,6 +779,24 @@ handle it automatically. C<class> is not required to live under the
 C<Concierge::> namespace -- any installed module implementing the
 relevant component's contract works (see L<Concierge::Auth>'s,
 L<Concierge::Sessions>'s, or L<Concierge::Users>'s POD).
+
+In addition to C<auth>, C<sessions>, and C<users>, the configuration may
+include a C<components> block for additional, non-core components -- see
+L<Concierge/Additional Components> for the full picture, including
+C<class>/C<optional>/C<promote> and runtime behavior at C<open_desk()>.
+One validation rule specific to C<build_desk()> is worth calling out
+here: C<< defer => 1 >> B<requires> C<< optional => 1 >> --
+C<build_desk()> rejects a C<defer>red entry that isn't also C<optional>,
+since a required-and-deferred component's eventual failure would happen
+mid-process rather than at build or open time. A C<defer>red entry is
+also probed once at build time, immediately after its C<setup()> check
+succeeds: C<build_desk()> runs the same probe-or-default reachability
+check that C<open_desk()> later re-runs on every process start (see
+L<Concierge::Desk::Component/PROBING: CHEAP REACHABILITY CHECKS FOR
+'defer' COMPONENTS>), and this check is unconditionally build-fatal
+regardless of C<optional> -- to catch a broken probe or an unrequireable
+class at a human-attended build, rather than only discovering it later,
+unattended, as a silent C<UnavailableComponent> substitution.
 
 The C<users> block is where field configuration happens.  The sections
 below describe the available fields and show how to customize them.

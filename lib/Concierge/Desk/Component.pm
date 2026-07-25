@@ -5,6 +5,23 @@ our $VERSION = 'v0.11.0';
 
 # ABSTRACT: Contract documentation for additional Concierge desk components
 
+# probe_component($class, $payload) -- the one functional sub this module
+# contains (see POD, "This module is B<pure documentation>" below for the
+# single exception this carves out). Shared by Concierge::Desk::Setup's
+# build_desk() (tier 1b) and Concierge's open_desk() (tier 2) for 'defer'
+# components, so the two call sites can never drift out of sync. Plain
+# package-qualified function, not a method -- Component.pm is never
+# instantiated and nothing inherits from it.
+sub probe_component ($class, $payload) {
+    return $class->probe($payload) if $class->can('probe');
+    my $ok = eval {
+        (my $file = $class) =~ s{::}{/}g;
+        require "$file.pm";
+        1;
+    };
+    return $ok ? { success => 1 } : { success => 0, message => $@ };
+}
+
 1;
 
 __END__
@@ -23,15 +40,18 @@ C<Concierge::Desk::Component> documents the minimal contract a module must
 follow to be usable as an additional component in a Concierge desk (wired
 up via a C<components> block in L<Concierge::Desk::Setup/build_desk>).
 
-This module is B<pure documentation>. It has no functional subs, and
-nothing inherits from it. Concierge's component mechanism is duck-typed:
-any class satisfying the contract below works, regardless of what (if
-anything) it subclasses. There is no C<isa> check anywhere in the loading
-path -- and just as importantly, neither C<Concierge> nor
-C<Concierge::Desk::Setup> ever inherits from an added component. The
-relationship is compositional, not hierarchical: the application's
-concierge obtains component objects and hands them to the application,
-which composes its own capabilities from them, rather than a
+This module is almost entirely documentation. Its one exception is
+C<probe_component()> (see L</PROBING: CHEAP REACHABILITY CHECKS FOR
+'defer' COMPONENTS>), a small shared helper used by C<build_desk()> and
+C<open_desk()> for C<defer>red components; nothing else here is
+functional, and nothing inherits from this module. Concierge's component
+mechanism is duck-typed: any class satisfying the contract below works,
+regardless of what (if anything) it subclasses. There is no C<isa> check
+anywhere in the loading path -- and just as importantly, neither
+C<Concierge> nor C<Concierge::Desk::Setup> ever inherits from an added
+component. The relationship is compositional, not hierarchical: the
+application's concierge obtains component objects and hands them to the
+application, which composes its own capabilities from them, rather than a
 component's behavior becoming part of Concierge's own class hierarchy.
 
 =head1 THE CONTRACT
@@ -87,6 +107,53 @@ hashref following the same convention used throughout Concierge:
 Callers (including Concierge itself, for any core-affordance-adjacent
 component) should check C<< $result->{success} >> rather than relying on
 exceptions.
+
+=head1 PROBING: CHEAP REACHABILITY CHECKS FOR 'defer' COMPONENTS
+
+=head2 probe
+
+    my $result = SomeComponent->probe($payload);
+    # { success => 1 }  or  { success => 0, message => '...' }
+
+An optional, duck-typed B<class> method (not an instance method --
+deliberately decoupled from C<new()> so it can do a genuinely cheap check,
+e.g. a raw socket connect, a file-exists check, a DNS resolution, without
+paying for whatever C<new()> actually does: pool setup, ORM init, a full
+auth handshake).
+
+C<probe> is only ever consulted for a component marked C<< defer => 1 >>
+in the desk's C<components> config block; it is never called for a
+non-C<defer> component. A component author is never required to implement
+C<probe> just because C<defer> is used elsewhere in the desk -- see
+C<probe_component()> below for what happens when it's absent.
+
+C<probe> must be fast and self-bounded. Concierge does not enforce a
+timeout around it; see L<Concierge/Additional Components> for the
+C<$max_wait_for_load> convention and the blocking-retry warning.
+
+=head2 probe_component
+
+    my $result = Concierge::Desk::Component::probe_component($class, $payload);
+    # { success => 1 }  or  { success => 0, message => '...' }
+
+A plain package-qualified function -- B<not> a method call, since this
+module is never instantiated and nothing inherits from it. Shared
+identically by C<< Concierge::Desk::Setup::build_desk() >> (build-time
+probe, for every C<defer> entry, immediately after C<setup()> succeeds)
+and C<< Concierge->open_desk() >> (open-time revalidation, for every
+C<defer> entry), so the two call sites can never drift apart.
+
+If C<$class> implements C<probe>, C<probe_component()> simply calls and
+returns C<< $class->probe($payload) >>. If C<$class> does not implement
+C<probe>, it falls back to a default check equivalent to what already
+happens implicitly for every non-C<defer> component: can the class even
+be C<require>d. This is the same default used at both the build-time and
+open-time call sites -- nothing is ever silently skipped for a C<defer>
+component merely because it lacks a C<probe> method.
+
+Both C<Concierge.pm> and C<Concierge::Desk::Setup> declare their own
+explicit C<use Concierge::Desk::Component;> to call this function, rather
+than relying on one loading it as a side effect of the other.
 
 =head1 PROMOTION: EXPOSING COMPONENT METHODS ON $concierge
 

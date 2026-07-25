@@ -15,6 +15,7 @@ use Concierge::Auth;
 use Concierge::Sessions;
 use Concierge::Users;
 use Concierge::Desk::User;
+use Concierge::Desk::Component;
 
 # === PARAMETER FILTERS ===
 # Shared filters for secure data segregation
@@ -162,22 +163,56 @@ sub open_desk ($class, $desk_location) {
 	# never open half-instantiated. An optional component's new() failure
 	# is substituted with a Concierge::Desk::UnavailableComponent stand-in
 	# instead. See Concierge::Desk::Component for the full contract.
+	#
+	# A 'defer' entry (always also 'optional' -- enforced at build time)
+	# skips the real new($payload) call here entirely. Instead, its class
+	# is still require()d eagerly (catching a missing/broken module
+	# immediately, at open_desk() time, rather than deferring even that
+	# far) and revalidated via the same probe_component() helper used at
+	# build time's tier 1b. A passing probe installs a
+	# Concierge::Desk::DeferredComponent stand-in, which defers the real,
+	# potentially expensive new($payload) call until first actual use. A
+	# failing probe resolves immediately to UnavailableComponent, exactly
+	# like any other optional component failure. See
+	# Concierge::Desk::Component/PROBING for the full tier model.
 	for my $name (keys %{ $concierge_config->{components} // {} }) {
 		my $entry = $concierge_config->{components}{$name};
 		my $comp;
-		eval {
+		if ($entry->{defer}) {
 			(my $file = $entry->{class}) =~ s{::}{/}g;
 			require "$file.pm";
-			$comp = $entry->{class}->new($entry->{payload});
-		};
-		if ($@) {
-			if ($entry->{optional}) {
-				require Concierge::Desk::UnavailableComponent;
-				$comp = Concierge::Desk::UnavailableComponent->new(
-					name => $name, reason => $@,
+
+			my $probe = Concierge::Desk::Component::probe_component(
+				$entry->{class}, $entry->{payload},
+			);
+
+			if ($probe->{success}) {
+				require Concierge::Desk::DeferredComponent;
+				$comp = Concierge::Desk::DeferredComponent->new(
+					name => $name, class => $entry->{class}, payload => $entry->{payload},
 				);
 			} else {
-				croak "Failed to load required component '$name' ($entry->{class}): $@";
+				require Concierge::Desk::UnavailableComponent;
+				$comp = Concierge::Desk::UnavailableComponent->new(
+					name => $name, reason => $probe->{message},
+				);
+			}
+		}
+		else {
+			eval {
+				(my $file = $entry->{class}) =~ s{::}{/}g;
+				require "$file.pm";
+				$comp = $entry->{class}->new($entry->{payload});
+			};
+			if ($@) {
+				if ($entry->{optional}) {
+					require Concierge::Desk::UnavailableComponent;
+					$comp = Concierge::Desk::UnavailableComponent->new(
+						name => $name, reason => $@,
+					);
+				} else {
+					croak "Failed to load required component '$name' ($entry->{class}): $@";
+				}
 			}
 		}
 		$concierge->{$name} = $comp;
@@ -1612,6 +1647,75 @@ Sessions, Auth, and Users are not wired through this generic mechanism --
 they remain hardcoded core affordances, loaded unconditionally by
 C<open_desk()> as described above. The C<components> block is only for
 components genuinely additional to that identity core.
+
+=head3 Deferred component initialization (defer)
+
+C<< defer => 1 >> postpones a component's real, potentially expensive
+C<new($payload)> call until the component's first actual use, instead of
+paying that cost for every process that opens the desk regardless of
+whether the component is ever called. This is an opt-in escape valve, not
+a new default -- reach for it only when a specific component's own
+startup (a network database, an external API handshake) has demonstrated
+it's a problem in practice.
+
+    components => {
+        reports => {
+            class    => 'Concierge::Reports',
+            defer    => 1,     # defer new() until first real use
+            optional => 1,     # REQUIRED to be true whenever defer is true
+        },
+    },
+
+C<defer> B<forces> C<optional>: C<build_desk()> rejects
+C<< defer => 1, optional => 0 >>. This preserves Concierge's guarantee
+that, once a desk is open, its API methods are never fatal to the
+application -- a required-and-deferred component's eventual failure would
+happen mid-process, potentially while other users are already being
+served, which C<croak>ing would violate.
+
+Three checks apply to a C<defer> component, in addition to the ordinary
+build-time C<setup()> check every component gets:
+
+=over 4
+
+=item * B<Build-time probe (tier 1b).> Immediately after C<setup()>
+succeeds, C<build_desk()> runs the same cheap reachability check tier 2
+will later run (the component's own C<probe()> class method if it has
+one, otherwise a default require-only check -- see
+L<Concierge::Desk::Component/PROBING>). This check is B<unconditionally
+build-fatal>, regardless of C<optional> -- deliberately, to catch a
+broken probe or an unrequireable class at a human-attended build, rather
+than only discovering it later, unattended, as a silent
+C<UnavailableComponent> substitution.
+
+=item * B<Open-time revalidation (tier 2).> C<open_desk()> runs the same
+probe-or-default check again, on every process start. A passing probe
+installs a L<Concierge::Desk::DeferredComponent> stand-in in place of the
+real component. A failing probe resolves immediately to
+L<Concierge::Desk::UnavailableComponent>, exactly like any other optional
+component failure -- since C<defer> always implies C<optional>, this is
+never open-fatal.
+
+=item * B<First real use (tier 3).> The C<DeferredComponent> stand-in
+defers the actual C<new($payload)> call until the first method is
+actually called on it, then caches the result (or, on failure, an
+C<UnavailableComponent> stand-in) and delegates every subsequent call to
+it. A tier 3 failure is permanent for the life of the process -- Concierge
+never retries a failed deferred build, matching the existing
+C<UnavailableComponent> precedent.
+
+=back
+
+Concierge never enforces a timeout around a component's C<probe()> or
+C<new()>, at any tier. If a component's own startup can hang or block, its
+author is expected to self-enforce a reasonable C<$max_wait_for_load>
+inside its own C<probe()>/C<new()>. This matters especially for C<defer>:
+Concierge runs single-process with cooperative concurrency, so a blocking
+sleep-and-retry loop inside a component's C<probe()> or C<new()> stalls
+the entire application for every current user, not just the caller that
+triggered it -- and a tier 3 (first-use) stall is worse than a tier
+1b/2 (build/open-time) one, since it can happen mid-process, while other
+users' requests are in flight.
 
 =head2 Component Method Promotion
 
