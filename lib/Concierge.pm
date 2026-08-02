@@ -532,7 +532,15 @@ sub _make_user_closures ($self, $user_id) {
         return $self->users->update_user($user_id, $updates);
     };
 
-    return ($get_user_data, $update_user_data);
+    my $verify_password = sub ($password) {
+        return $self->verify_password($user_id, $password);
+    };
+
+    my $reset_password = sub ($new_password) {
+        return $self->reset_password($user_id, $new_password);
+    };
+
+    return ($get_user_data, $update_user_data, $verify_password, $reset_password);
 }
 
 # Admit visitor: assign user_key only (no session, no user data)
@@ -573,10 +581,17 @@ sub checkin_guest ($self, $session_opts={}) {
 	my $session = $result->{session};
 	my $session_id = $session->session_id();
 
-	# Create user object for guest (no user_data, no backend closures)
+	# Guest has a session, so it can log itself out, even though it has
+	# no Auth-backed identity for the password-related closures.
+	my $logout = sub { $self->logout_user($session_id) };
+	my $session_valid = sub { $self->sessions->get_session($session_id) };
+
+	# Create user object for guest (no user_data, no data-backend closures)
 	my $user = Concierge::Desk::User->enable_user($guest_id, {
-		session  => $session,
-		user_key => $guest_id,  # Use guest_id as user_key for simplicity
+		session        => $session,
+		user_key       => $guest_id,  # Use guest_id as user_key for simplicity
+		_logout        => $logout,
+		_session_valid => $session_valid,
 	});
 
 	# Store user_key mapping
@@ -697,13 +712,19 @@ sub restore_user ($self, $user_key) {
 
     if ($user_result->{success}) {
         # Logged-in user: rebuild with user data and backend closures
-        my ($get, $update) = $self->_make_user_closures($user_id);
+        my ($get, $update, $verify_password, $reset_password) = $self->_make_user_closures($user_id);
+        my $logout = sub { $self->logout_user($session_id) };
+        my $session_valid = sub { $self->sessions->get_session($session_id) };
         my $user = Concierge::Desk::User->enable_user($user_id, {
             session           => $session,
             user_data         => $user_result->{user},
             user_key          => $user_key,
             _get_user_data    => $get,
             _update_user_data => $update,
+            _verify_password  => $verify_password,
+            _reset_password   => $reset_password,
+            _logout           => $logout,
+            _session_valid    => $session_valid,
         });
 
         return {
@@ -713,10 +734,15 @@ sub restore_user ($self, $user_key) {
         };
     }
     else {
-        # Guest: session only, no user data
+        # Guest: session only, no user data -- but a session still means
+        # it can log itself out.
+        my $logout = sub { $self->logout_user($session_id) };
+        my $session_valid = sub { $self->sessions->get_session($session_id) };
         my $user = Concierge::Desk::User->enable_user($user_id, {
-            session  => $session,
-            user_key => $user_key,
+            session        => $session,
+            user_key       => $user_key,
+            _logout        => $logout,
+            _session_valid => $session_valid,
         });
 
         return {
@@ -761,12 +787,18 @@ sub login_user ($self, $credentials, $session_opts={}) {
     my $session_id = $session->session_id();
 
     # Create user object for logged-in user
-    my ($get, $update) = $self->_make_user_closures($user_id);
+    my ($get, $update, $verify_password, $reset_password) = $self->_make_user_closures($user_id);
+    my $logout = sub { $self->logout_user($session_id) };
+    my $session_valid = sub { $self->sessions->get_session($session_id) };
     my $user = Concierge::Desk::User->enable_user($user_id, {
         session           => $session,
         user_data         => $user_result->{user},
         _get_user_data    => $get,
         _update_user_data => $update,
+        _verify_password  => $verify_password,
+        _reset_password   => $reset_password,
+        _logout           => $logout,
+        _session_valid    => $session_valid,
     });
 
     # Store user_key mapping
@@ -925,8 +957,9 @@ v0.12.0
     my $restore = $concierge->restore_user($user->user_key);
     my $same_user = $restore->{user};
 
-    # Log out
+    # Log out -- via Concierge, or directly on the user object
     $concierge->logout_user($user->session_id);
+    $user->logout;
 
 =head1 CONCEPTS
 
@@ -1070,9 +1103,16 @@ through its own accessor (see L</Component Accessors> and L</EXTENSIBILITY>).
 =head2 What the Suite Provides
 
 Concierge handles orchestration -- coordinating components and returning
-consistent structured results.
+consistent structured results. As L</Orchestration> above describes,
+this takes one of two co-equal forms: direct, built-in coordination for
+the identity core, or handoff to whatever additional components a desk
+is configured with.
 
-The core capabilities of the suite live in the three components:
+The identity core -- Auth, Sessions, and Users -- ships with every
+installation and is described in detail below. An added component is
+just as much a capability of the suite once it's attached to a desk; see
+L</Additional Components> for how those are configured, loaded, and
+reached.
 
 B<Authentication> (L<Concierge::Auth>): Argon2id password hashing and
 verification; no plaintext credentials are ever written to disk. Also
@@ -1210,10 +1250,14 @@ Concierge ships with three I<identity core> components:
 
 These three are tightly orchestrated: a single C<login_user()> call
 authenticates via Auth, retrieves a record from Users, and creates a
-session through Sessions.  This coordination is the purpose of
-Concierge -- applications interact with the Concierge API and the
-L<Concierge::Desk::User> objects it returns, not with the components
-directly.
+session through Sessions.  This coordination is what the identity core
+exists to provide -- applications interact with the Concierge API and
+the L<Concierge::Desk::User> objects it returns, not with the components
+directly. It is one of the two orchestration forms described in
+L</CONCEPTS>, not the whole of what Concierge does: the same
+Concierge-level API also hands off to any added component, reached
+through its own accessor, with the application composing its own
+capabilities from what it gets back.
 
 The identity core is designed to be sufficient on its own, but the
 component pattern it follows -- backend abstraction, setup-time
@@ -1348,6 +1392,12 @@ components (an inconsistent state) rather than attempting either path.
 
 Deletes the session and removes the user_key mapping entry.
 
+Also available directly on the returned user object as C<< $user->logout >>
+-- see L<Concierge::Desk::User>. Unlike this method, the user-object form
+needs no C<$session_id> argument (it's bound at construction) and works for
+both guest and logged-in users, since logout only needs a session, not an
+Auth-backed identity.
+
 =head2 Admin Operations
 
 =head3 add_user
@@ -1424,12 +1474,26 @@ for existing users.
 Checks whether C<$password> is correct for C<$user_id>. Returns
 C<< success => 1 >> if the password matches.
 
+Also available directly on a logged-in user object as
+C<< $user->verify_password($password) >> -- see L<Concierge::Desk::User>.
+The user-object form needs no C<$user_id> argument (it's bound at
+construction) and collapses the hashref result to a plain C<1>/C<0>/
+C<undef> scalar; C<undef> means the method isn't applicable to that user
+(guests and visitors have no Auth-backed identity to check against).
+
 =head3 reset_password
 
     my $result = $concierge->reset_password($user_id, $new_password);
 
 Sets a new password for an existing user. The application is responsible
 for verifying the user's identity before calling this method.
+
+Also available directly on a logged-in user object as
+C<< $user->reset_password($new_password) >> -- see
+L<Concierge::Desk::User>. Same argument-binding and scalar-collapsing
+behavior as C<verify_password> above, except success collapses to C<1>
+and any non-success (including inapplicability to guests/visitors)
+collapses to C<undef>.
 
 =head1 PARAMETER FILTERS
 

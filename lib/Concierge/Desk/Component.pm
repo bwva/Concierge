@@ -183,6 +183,30 @@ A required (non-optional) component's C<new()> failure is not caught
 this way -- it propagates as an uncaught exception from C<open_desk()>,
 since a desk must never open half-instantiated.
 
+=head1 FORWARD REFERENCE: A FUTURE compose()
+
+B<This section is a flag for future editing, not documentation of
+existing behavior.> No C<compose()> method exists anywhere in Concierge
+today, nothing described below is implemented, and no API for it has
+been finalized or even fully designed.
+
+The idea under consideration is some future affordance -- tentatively
+named C<compose()> -- for combining multiple added components into a
+single, unified interface, rather than an application reaching each one
+individually through its own accessor as described above. Earlier
+drafts of this project assumed such a thing, if it were ever built,
+would belong on C<Concierge> or C<Concierge::Desk::Setup>. On reflection,
+B<this module> -- C<Concierge::Desk::Component> -- looks like the more
+logical home for whatever contract documentation a real C<compose()>
+would eventually need, since this is already the fixed point for the
+single-added-component contract that C<compose()> would presumably have
+to build on or generalize.
+
+This note exists purely so that whoever eventually designs and
+implements C<compose()> starts by looking here, not to commit to any
+particular design, timeline, or even the certainty that it will be
+built at all.
+
 =head1 SEE ALSO
 
 L<Concierge> -- see its C<open_desk()> and EXTENSIBILITY section for how
