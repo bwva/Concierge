@@ -20,6 +20,5 @@ t/04-user-operations.t
 t/05-session-management.t
 t/06-cleanup-sync.t
 t/07-components.t
-t/08-promotion.t
 t/09-defer-components.t
 xt/session-timeout.t

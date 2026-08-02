@@ -3,7 +3,7 @@ use v5.36;
 
 our $VERSION = 'v0.12.0';
 
-# ABSTRACT: Service layer orchestrator for authentication, sessions, and user data
+# ABSTRACT: Extensible service layer that manages the relationship between an application and its users
 
 use Carp qw<carp croak>;
 use JSON::PP qw< encode_json decode_json >;
@@ -11,11 +11,11 @@ use File::Spec;
 use Params::Filter qw< make_filter >;
 
 # === COMPONENT MODULES ===
+use Concierge::Desk::User;
+use Concierge::Desk::Component;
 use Concierge::Auth;
 use Concierge::Sessions;
 use Concierge::Users;
-use Concierge::Desk::User;
-use Concierge::Desk::Component;
 
 # === PARAMETER FILTERS ===
 # Shared filters for secure data segregation
@@ -219,28 +219,6 @@ sub open_desk ($class, $desk_location) {
 		unless ($concierge->can($name)) {
 			no strict 'refs';
 			*{"Concierge::$name"} = sub { $_[0]->{$name} };
-		}
-
-		# Replay this component's 'promote' entries, already fully
-		# validated once, at build time, by build_desk() -- shape,
-		# method-existence (can()), and name-collisions. open_desk()
-		# performs none of that validation itself; concierge.conf is
-		# trusted completely. A forwarding sub calling ->$method_name
-		# on an UnavailableComponent stand-in resolves via its
-		# AUTOLOAD and returns the standard failure hashref, with no
-		# special-casing needed here.
-		if (defined $entry->{promote}) {
-			my $promote = $entry->{promote};
-			my @pairs = ref $promote eq 'HASH'
-				? (map { [$_, $promote->{$_}] } keys %$promote)
-				: (map { [$_, $_] } @$promote);
-			for my $pair (@pairs) {
-				my ($top_name, $method_name) = @$pair;
-				unless ($concierge->can($top_name)) {
-					no strict 'refs';
-					*{"Concierge::$top_name"} = sub { shift->{$name}->$method_name(@_) };
-				}
-			}
 		}
 	}
 
@@ -902,26 +880,14 @@ sub logout_user ($self, $session_id) {
     };
 }
 
-# Snapshot of Concierge's own method names, taken once when this module
-# is loaded -- i.e. before any component-driven dynamic sub (bare
-# accessors, promoted methods) has ever been installed into this
-# package by open_desk(). Concierge::Desk::Setup::build_desk() uses
-# this list to refuse a 'promote' entry that would shadow a real core
-# method. open_desk() never needs this: by the time a desk is opened,
-# its promote entries were already validated once, at build time, and
-# are trusted as part of concierge.conf.
-my @CORE_METHODS = grep { defined &{"Concierge::$_"} } keys %Concierge::;
-sub core_methods { return @CORE_METHODS }
-
 1;
 
 __END__
 
 =head1 NAME
 
-Concierge - Extensible service layer orchestrator of operational resources
-for applications, with built-in provisions for authentication, sessions,
-and user data.
+Concierge - Extensible service layer that manages the relationship
+between an application and its users.
 
 =head1 VERSION
 
@@ -993,13 +959,7 @@ treat an added component purely as a pass-through:
     # or my $OthCompObj = $concierge->{'OthComp'};
     my $res = $OthCompObj->OthCompMthd(); # $concierge no longer involved
 
-Additionally, selected methods of a component may be I<promoted> to be
-direct methods of the concierge object.
-
-    # OthComp's OthCompMthd specified in setup to be promoted
-    my $res = $concierge->OthCompMthd();
-
-See L</Additional Components> and L</Component Method Promotion>.
+See L</Additional Components>.
 
 =back
 
@@ -1077,14 +1037,8 @@ creates a session via Sessions in one coordinated call.
 For an added component, Concierge's involvement can end at handoff: the
 component satisfies the minimal contract in L<Concierge::Desk::Component> so
 it can be loaded and reached through the concierge, but Concierge does not
-inherit from it or in any way intervene in its operations - that is for the 
+inherit from it or in any way intervene in its operations - that is for the
 application as it uses the component.
-
-Alternatively, if useful to the application, methods from added components 
-may be promoted to be methods of the concierge object itself. 
-Promoted methods may be called with their own names if not conflicting
-with built-ins, and may be aliased to avoid conflicts or provide recognizable
-names. See Extensibility, above. 
 
 =back
 
@@ -1102,20 +1056,10 @@ deployed, and provided to the application the same way.
 
 =head1 DESCRIPTION
 
-Concierge is an extensible service layer orchestrator of operational
-resources for applications -- see L</CONCEPTS> above for what that means.
-Out of the box, its identity core coordinates three component modules
-behind a single API:
-
-=over 4
-
-=item * B<Concierge::Auth> -- password authentication (Argon2)
-
-=item * B<Concierge::Sessions> -- session management (SQLite or file backends)
-
-=item * B<Concierge::Users> -- user data storage (SQLite, YAML, or CSV/TSV backends)
-
-=back
+Concierge manages the relationship between an application and its users:
+identity, sessions, access, and the information an application keeps
+about who is using it. It does this through an extensible service layer
+-- see L</CONCEPTS> for the terms used throughout this documentation.
 
 Applications primarily interact with Concierge and the L<Concierge::Desk::User>
 objects it returns; most operations never require touching a component
@@ -1331,10 +1275,7 @@ Read-only accessors returning the live, already-instantiated component
 object ( L<Concierge::Auth>, L<Concierge::Sessions>, or L<Concierge::Users>,
 or a substitute -- see L</EXTENSIBILITY> ) for direct use when an operation
 isn't exposed as a Concierge-level convenience method. This is the same
-"bare accessor" direct component access described in L</Component Substitution>
-and L<Concierge::Desk::Component>'s C<promote> mechanism -- it remains available
-regardless of what a component chooses to C<promote> onto C<$concierge>
-directly.
+"bare accessor" direct component access described in L</Component Substitution>.
 
 =head2 User Lifecycle
 
@@ -1716,41 +1657,6 @@ the entire application for every current user, not just the caller that
 triggered it -- and a tier 3 (first-use) stall is worse than a tier
 1b/2 (build/open-time) one, since it can happen mid-process, while other
 users' requests are in flight.
-
-=head2 Component Method Promotion
-
-A component's own bare accessor (C<< $concierge->{name}->method(...) >>
-or C<< $concierge->name->method(...) >>) always exposes its complete
-API -- this is the standard access Concierge provides the application
-for using the component, and needs no configuration.
-C<promote> is an optional, convenience layer on top of it: a
-curated allowlist of a component's methods forwarded directly onto
-C<$concierge>, declared in the same C<components> config block:
-
-    components => {
-        reports => {
-            class   => 'Concierge::Reports',
-            promote => ['get_signal_report'],                   # same-name
-            # or:
-            promote => { fetch_signal_report => 'get_signal_report' },  # aliased
-        },
-    },
-
-    my $c = Concierge->open_desk($desk_dir)->{concierge};
-    $c->fetch_signal_report(...);               # promoted sugar, using alias
-    $c->{reports}->get_signal_report(...);      # direct component access,
-                                                 # always works, promoted or not
-
-In other words, the concierge may use its own alias to call the
-component's real method -- e.g. C<< $concierge->fetch_signal_report(...) >>
-calls the component's C<get_signal_report()>.
-
-C<promote> is not access control -- it never restricts what's reachable
-via direct component access. All validation (shape, method-existence, and
-name-collision checks against core methods and other components) happens
-once, at C<build_desk()> time; C<open_desk()> trusts the persisted result
-completely. See L<Concierge::Desk::Component/PROMOTION: EXPOSING
-COMPONENT METHODS ON $concierge> for the full contract.
 
 =head2 Future Components
 

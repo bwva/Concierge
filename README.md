@@ -1,10 +1,15 @@
 # Concierge
 
-Extensible service layer orchestrator of operational resources for
-applications, with built-in provisions for authentication, sessions, and
-user data. Concierge combines three independent component modules behind a
-single, consistent API so applications never deal with credential storage,
-session backends, or user record schemas directly.
+Every application needs to relate to its users -- who they are, what
+they're allowed to do, what context follows them through a session, and
+what the application knows about them. Concierge manages that
+relationship for you, so you can focus on what a user can *do* with your
+application instead of the plumbing that makes it possible.
+
+It's an extensible service layer: reliable, structured behavior for the
+identity core it provides out of the box (authentication, sessions, user
+data) -- and the same pattern extends to any other resource your
+application needs to manage the same way.
 
 ## Synopsis
 
@@ -50,9 +55,8 @@ exists to simplify an application's **operational resources**. See
 
 - **Extensible** — Each identity-core component (Auth, Sessions, Users) is
   itself extensible as to backend and storage configuration. Components
-  beyond the identity core may also be added to a desk, either as a plain
-  pass-through (reached through their own accessor) or with selected
-  methods `promote`d directly onto `$concierge`.
+  beyond the identity core may also be added to a desk, reached through
+  their own accessor.
 - **Service Layer** — Setup (`build_desk()`/`build_quick_desk()`) and
   `open_desk()` both guarantee that any failure is always clearly reported
   — as a structured `{ success => 0, message => '...' }` response in
@@ -191,9 +195,7 @@ Each identity core component can be replaced with a conforming alternative.
 Additional components (Organizations, Assets, Guides, Catalog, etc.) can be
 added by satisfying the duck-typed contract documented in
 `Concierge::Desk::Component`, and wired up via a `components` block in
-`build_desk()`. A component may also `promote` a curated subset of its
-methods directly onto `$concierge` for convenience; see `perldoc
-Concierge::Desk::Component` for details.
+`build_desk()`.
 
 See the `EXTENSIBILITY` section in `perldoc Concierge` for the method
 contracts and patterns for both substitution and extension.

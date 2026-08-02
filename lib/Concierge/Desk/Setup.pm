@@ -338,18 +338,6 @@ sub build_desk ($config) {
     # component's 'payload'. A setup() failure always fails the whole
     # build, regardless of 'optional' -- 'optional' only affects behavior
     # at open_desk() time.
-    # Claims table for 'promote' collision detection, seeded from
-    # names that are structurally known before any component is even
-    # instantiated: every component's own bare-accessor name (its key
-    # in the components config) and Concierge's real core methods.
-    # Populated further, below, as each component's 'promote' entries
-    # are validated.
-    my %claimed = map { $_ => "component '$_' accessor" }
-                  keys %{ $config->{components} // {} };
-    for my $core (Concierge::core_methods()) {
-        $claimed{$core} //= 'a core Concierge method';
-    }
-
     my %components;
     for my $name (keys %{ $config->{components} // {} }) {
         my $entry = $config->{components}{$name};
@@ -360,7 +348,6 @@ sub build_desk ($config) {
             or return { success => 0, message => "components.$name is missing required 'class'" };
         my $optional = $entry->{optional} ? 1 : 0;
         my $defer    = $entry->{defer}    ? 1 : 0;
-        my $promote  = $entry->{promote};
 
         # 'defer' forces 'optional': a required-and-deferred component's
         # eventual first-use failure would happen mid-process, potentially
@@ -373,38 +360,6 @@ sub build_desk ($config) {
                 success => 0,
                 message => "components.$name cannot use 'defer' without also being 'optional'",
             };
-        }
-
-        # Validate 'promote' shape and normalize into a list of
-        # [$top_name, $method_name] pairs. This is build-time-only
-        # validation -- open_desk() trusts the persisted result
-        # completely and performs none of this itself.
-        my @pairs;
-        if (!defined $promote) {
-            # no promotion for this component
-        }
-        elsif (ref $promote eq 'ARRAY') {
-            for my $method_name (@$promote) {
-                return {
-                    success => 0,
-                    message => "components.$name.promote array must contain only method-name strings"
-                } unless defined $method_name && !ref($method_name) && length($method_name);
-            }
-            @pairs = map { [$_, $_] } @$promote;
-        }
-        elsif (ref $promote eq 'HASH') {
-            for my $top_name (keys %$promote) {
-                my $method_name = $promote->{$top_name};
-                return {
-                    success => 0,
-                    message => "components.$name.promote hash must map top-level names to method-name strings"
-                } unless defined $top_name && !ref($top_name) && length($top_name)
-                      && defined $method_name && !ref($method_name) && length($method_name);
-            }
-            @pairs = map { [$_, $promote->{$_}] } keys %$promote;
-        }
-        else {
-            return { success => 0, message => "components.$name.promote must be an arrayref or hashref" };
         }
 
         my $comp_dir = _resolve_dir($entry->{dir}, $base_dir);
@@ -431,7 +386,6 @@ sub build_desk ($config) {
         delete $setup_args{class};
         delete $setup_args{optional};
         delete $setup_args{defer};
-        delete $setup_args{promote};
         $setup_args{dir}  = $comp_dir;
         $setup_args{name} = $name;
 
@@ -458,35 +412,11 @@ sub build_desk ($config) {
             }
         }
 
-        # Validate 'promote' method-existence and name-collisions now
-        # that $comp is a fully live, working instance (setup()
-        # succeeded above). Sorted by top_name for deterministic
-        # error messages.
-        for my $pair (sort { $a->[0] cmp $b->[0] } @pairs) {
-            my ($top_name, $method_name) = @$pair;
-
-            return {
-                success => 0,
-                message => "components.$name.promote references unknown method "
-                    . "'$method_name' on component '$name' ($class)"
-            } unless $comp->can($method_name);
-
-            if (exists $claimed{$top_name}) {
-                return {
-                    success => 0,
-                    message => "Cannot promote '$method_name' from component '$name' as "
-                        . "'$top_name': '$top_name' is already $claimed{$top_name}"
-                };
-            }
-            $claimed{$top_name} = "promoted from component '$name' (method '$method_name')";
-        }
-
         $components{$name} = {
             class    => $class,
             optional => $optional,
             defer    => $defer,
             payload  => $setup_result,
-            (defined $promote ? (promote => $promote) : ()),
         };
     }
 
@@ -783,7 +713,7 @@ L<Concierge::Sessions>'s, or L<Concierge::Users>'s POD).
 In addition to C<auth>, C<sessions>, and C<users>, the configuration may
 include a C<components> block for additional, non-core components -- see
 L<Concierge/Additional Components> for the full picture, including
-C<class>/C<optional>/C<promote> and runtime behavior at C<open_desk()>.
+C<class>/C<optional> and runtime behavior at C<open_desk()>.
 One validation rule specific to C<build_desk()> is worth calling out
 here: C<< defer => 1 >> B<requires> C<< optional => 1 >> --
 C<build_desk()> rejects a C<defer>red entry that isn't also C<optional>,

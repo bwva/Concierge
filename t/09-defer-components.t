@@ -297,8 +297,8 @@ subtest 'build_desk(): tier 1b falls back to require-only check when probe() is 
 # ==============================================================================
 # open_desk() -- 'defer' tier 2 revalidation and tier 3 first-use wiring
 # (plan §12 test cases 6-10; test case 14, the full unmodified regression of
-# t/07-components.t and t/08-promotion.t, is covered by prove running the
-# whole t/ directory rather than duplicated here)
+# t/07-components.t, is covered by prove running the whole t/ directory
+# rather than duplicated here)
 # ==============================================================================
 
 package Fake::Defer::FlipProbe::Component {
@@ -331,10 +331,9 @@ package Fake::Defer::FirstUseFails::Component {
     # probe() always passes (tiers 1b/2 never catch this one), but the
     # real new($payload) dies -- used to exercise tier 3's own failure
     # path through the full build_desk()+open_desk() pipeline. Bare
-    # new() (no payload) still succeeds, so build-time tier 1a and
-    # promote validation (which both use a payload-less instance) are
-    # unaffected -- only the real, payload-bearing construction at
-    # first use fails.
+    # new() (no payload) still succeeds, so build-time tier 1a (which
+    # uses a payload-less instance) is unaffected -- only the real,
+    # payload-bearing construction at first use fails.
     our $new_calls = 0;
     sub new ($class, $payload = undef) {
         $new_calls++;
@@ -460,10 +459,10 @@ subtest "open_desk(): tier 2 probe passing is a no-op from the caller's perspect
 };
 
 # ==============================================================================
-# open_desk() -- tier 3 failure hardening and 'promote' interaction, through
-# the full build_desk()+open_desk() pipeline (plan §12 test cases 11-12).
+# open_desk() -- tier 3 failure hardening, through the full
+# build_desk()+open_desk() pipeline (plan §12 test case 11).
 # (Tier 3's basic success/failure mechanics are already covered directly
-# against DeferredComponent in isolation, above; these two subtests confirm
+# against DeferredComponent in isolation, above; this subtest confirms
 # the same guarantees hold end-to-end, via a live desk.)
 # ==============================================================================
 
@@ -497,43 +496,6 @@ subtest 'open_desk(): tier 3 first-use failure resolves to a graceful failure, p
     ok !$result2->{success}, 'second call still returns a graceful failure';
     is $Fake::Defer::FirstUseFails::Component::new_calls, 1,
         'failing new() is never retried -- permanent failure holds through the full pipeline too';
-};
-
-subtest "open_desk(): 'promote' forwarding sub correctly triggers the deferred build" => sub {
-    my $desk_dir = tempdir(CLEANUP => 1);
-
-    my $build = Concierge::Desk::Setup::build_desk(
-        base_desk_config($desk_dir, {
-            reports => {
-                class   => 'Fake::Defer::ProbePasses::Component', dir => 'reports',
-                defer   => 1, optional => 1,
-                promote => ['greet'],
-            },
-        })
-    );
-    ok $build->{success}, 'build succeeds' or diag $build->{message};
-
-    $Fake::Defer::ProbePasses::Component::new_calls = 0;   # isolate open_desk()'s own effect
-
-    my $open = Concierge->open_desk($desk_dir);
-    ok $open->{success}, 'open_desk succeeds' or diag $open->{message};
-    my $c = $open->{concierge};
-
-    isa_ok $c->{reports}, ['Concierge::Desk::DeferredComponent'],
-        'DeferredComponent installed under the bare accessor';
-    is $Fake::Defer::ProbePasses::Component::new_calls, 0,
-        'real new() not yet called just from opening the desk';
-
-    ok $c->can('greet'), 'promoted forwarding sub installed directly on $concierge';
-
-    my $result = $c->greet;
-    ok $result->{success}, 'calling the promoted method triggers the deferred build and delegates correctly';
-    is $Fake::Defer::ProbePasses::Component::new_calls, 1,
-        'real new() triggered exactly once via the promoted forwarding sub (not just the bare accessor)';
-
-    $c->greet;
-    is $Fake::Defer::ProbePasses::Component::new_calls, 1,
-        'a second call through the promoted sub does not re-build';
 };
 
 done_testing;
