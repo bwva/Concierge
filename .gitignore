@@ -28,6 +28,9 @@ cover_db/
 # Backup files
 MANIFEST.bak
 
+# Development specification
+Dev_Notes/
+
 # Local archive/scratch (not part of the distribution or git history going forward)
 ZZZ_archive/
 
