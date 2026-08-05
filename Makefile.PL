@@ -48,27 +48,27 @@ WriteMakefile(
         provides => {
             'Concierge' => {
                 file    => 'lib/Concierge.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
             'Concierge::Desk::Component' => {
                 file    => 'lib/Concierge/Desk/Component.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
             'Concierge::Desk::DeferredComponent' => {
                 file    => 'lib/Concierge/Desk/DeferredComponent.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
             'Concierge::Desk::UnavailableComponent' => {
                 file    => 'lib/Concierge/Desk/UnavailableComponent.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
             'Concierge::Desk::Setup' => {
                 file    => 'lib/Concierge/Desk/Setup.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
             'Concierge::Desk::User' => {
                 file    => 'lib/Concierge/Desk/User.pm',
-                version => 'v0.12.0',
+                version => 'v0.13.0',
             },
         },
     },

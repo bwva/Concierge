@@ -1,7 +1,7 @@
-package Concierge v0.12.0;
+package Concierge v0.13.0;
 use v5.36;
 
-our $VERSION = 'v0.12.0';
+our $VERSION = 'v0.13.0';
 
 # ABSTRACT: Extensible service layer that manages the relationship between an application and its users
 
@@ -923,7 +923,7 @@ between an application and its users.
 
 =head1 VERSION
 
-v0.12.0
+v0.13.0
 
 =head1 SYNOPSIS
 
